@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../config/api_config.dart';
 import '../models/channel_model.dart';
 import '../models/device_model.dart';
 import '../providers/device_provider.dart';
@@ -262,6 +263,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'v${ApiConfig.appVersion}',
+                            style: TextStyle(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.3)
+                                  : Colors.black.withValues(alpha: 0.3),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w400,
                             ),
                           ),
                           const SizedBox(height: 16),

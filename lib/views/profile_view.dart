@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 
+import '../config/api_config.dart';
 import '../providers/theme_provider.dart';
 import '../providers/user_session_provider.dart';
 import 'help_view.dart';
@@ -532,7 +533,17 @@ class _ProfileViewState extends State<ProfileView> {
                       },
                     ),
                   ),
-
+                  const SizedBox(height: 32),
+                  Center(
+                    child: Text(
+                      'Version ${ApiConfig.appVersion}',
+                      style: TextStyle(
+                        color: textSecondary.withValues(alpha: 0.35),
+                        fontSize: 12,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 40),
                 ],
               ),

@@ -33,7 +33,7 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
     setState(() => _isLoading = true);
     await context.read<DeviceProvider>().fetchDeviceDetails(
           token: token,
-          hwId: widget.device.deviceId,
+          dbId: widget.device.id,
         );
     if (mounted) {
       setState(() => _isLoading = false);
@@ -62,78 +62,126 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                Text(
-                  'Search user by name or email:',
-                  style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 13),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: searchController,
-                  style: TextStyle(color: isDark ? Colors.white : Colors.black87),
-                  onChanged: (val) async {
-                    final query = val.trim();
-                    if (query.length < 2) {
-                      setDialogState(() {
-                        searchResults = [];
-                      });
-                      return;
-                    }
-                    final token = context.read<UserSessionProvider>().session.token;
-                    if (token == null) return;
+                 Text(
+                   'Search user by email:',
+                   style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 13),
+                 ),
+                 const SizedBox(height: 8),
+                 TextField(
+                   controller: searchController,
+                   style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                   onChanged: (val) async {
+                     final query = val.trim();
+                     if (query.isEmpty) {
+                       setDialogState(() {
+                         searchResults = [];
+                         selectedUserId = '';
+                         selectedUserName = '';
+                         selectedUserEmail = '';
+                       });
+                       return;
+                     }
+                     final token = context.read<UserSessionProvider>().session.token;
+                     if (token == null) return;
 
-                    // Debounce: wait 300ms
-                    await Future.delayed(const Duration(milliseconds: 300));
-                    if (!stateContext.mounted) return;
-                    if (searchController.text.trim() != query) return;
+                     // Debounce: wait 300ms
+                     await Future.delayed(const Duration(milliseconds: 300));
+                     if (!stateContext.mounted) return;
+                     if (searchController.text.trim() != query) return;
 
-                    final results = await ApiService().searchUsers(token: token, query: query);
-                    if (!stateContext.mounted) return;
-                    setDialogState(() {
-                      searchResults = results ?? [];
-                    });
-                  },
-                  onSubmitted: (val) async {
-                    final query = val.trim();
-                    if (query.isEmpty) return;
-                    setDialogState(() {
-                      isSearching = true;
-                    });
-                    final token = context.read<UserSessionProvider>().session.token;
-                    final results = await ApiService().searchUsers(token: token!, query: query);
-                    setDialogState(() {
-                      isSearching = false;
-                      searchResults = results ?? [];
-                    });
-                  },
-                  decoration: InputDecoration(
-                    hintText: 'Type email or name to search...',
-                    suffixIcon: isSearching
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: Padding(
-                              padding: EdgeInsets.all(10),
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          )
-                        : IconButton(
-                            icon: const Icon(Icons.search),
-                            onPressed: () async {
-                              final query = searchController.text.trim();
-                              if (query.isEmpty) return;
-                              setDialogState(() {
-                                isSearching = true;
-                              });
-                              final token = context.read<UserSessionProvider>().session.token;
-                              final results = await ApiService().searchUsers(token: token!, query: query);
-                              setDialogState(() {
-                                isSearching = false;
-                                searchResults = results ?? [];
-                              });
-                            },
-                          ),
-                  ),
-                ),
+                     final results = await ApiService().searchUsers(token: token, query: query);
+                     if (!stateContext.mounted) return;
+
+                     final filtered = (results ?? []).where((u) {
+                       final email = u['email']?.toString().toLowerCase() ?? '';
+                       return email == query.toLowerCase();
+                     }).toList();
+
+                     setDialogState(() {
+                       searchResults = filtered;
+                       if (filtered.isNotEmpty) {
+                         selectedUserId = filtered[0]['id']?.toString() ?? filtered[0]['_id']?.toString() ?? '';
+                         selectedUserName = filtered[0]['name']?.toString() ?? '';
+                         selectedUserEmail = filtered[0]['email']?.toString() ?? '';
+                       } else {
+                         selectedUserId = '';
+                         selectedUserName = '';
+                         selectedUserEmail = '';
+                       }
+                     });
+                   },
+                   onSubmitted: (val) async {
+                     final query = val.trim();
+                     if (query.isEmpty) return;
+                     setDialogState(() {
+                       isSearching = true;
+                     });
+                     final token = context.read<UserSessionProvider>().session.token;
+                     final results = await ApiService().searchUsers(token: token!, query: query);
+                     
+                     final filtered = (results ?? []).where((u) {
+                       final email = u['email']?.toString().toLowerCase() ?? '';
+                       return email == query.toLowerCase();
+                     }).toList();
+
+                     setDialogState(() {
+                       isSearching = false;
+                       searchResults = filtered;
+                       if (filtered.isNotEmpty) {
+                         selectedUserId = filtered[0]['id']?.toString() ?? filtered[0]['_id']?.toString() ?? '';
+                         selectedUserName = filtered[0]['name']?.toString() ?? '';
+                         selectedUserEmail = filtered[0]['email']?.toString() ?? '';
+                       } else {
+                         selectedUserId = '';
+                         selectedUserName = '';
+                         selectedUserEmail = '';
+                       }
+                     });
+                   },
+                   decoration: InputDecoration(
+                     hintText: 'Enter user email...',
+                     suffixIcon: isSearching
+                         ? const SizedBox(
+                             width: 20,
+                             height: 20,
+                             child: Padding(
+                               padding: EdgeInsets.all(10),
+                               child: CircularProgressIndicator(strokeWidth: 2),
+                             ),
+                           )
+                         : IconButton(
+                             icon: const Icon(Icons.search),
+                             onPressed: () async {
+                               final query = searchController.text.trim();
+                               if (query.isEmpty) return;
+                               setDialogState(() {
+                                 isSearching = true;
+                               });
+                               final token = context.read<UserSessionProvider>().session.token;
+                               final results = await ApiService().searchUsers(token: token!, query: query);
+
+                               final filtered = (results ?? []).where((u) {
+                                 final email = u['email']?.toString().toLowerCase() ?? '';
+                                 return email == query.toLowerCase();
+                               }).toList();
+
+                               setDialogState(() {
+                                 isSearching = false;
+                                 searchResults = filtered;
+                                 if (filtered.isNotEmpty) {
+                                   selectedUserId = filtered[0]['id']?.toString() ?? filtered[0]['_id']?.toString() ?? '';
+                                   selectedUserName = filtered[0]['name']?.toString() ?? '';
+                                   selectedUserEmail = filtered[0]['email']?.toString() ?? '';
+                                 } else {
+                                   selectedUserId = '';
+                                   selectedUserName = '';
+                                   selectedUserEmail = '';
+                                 }
+                               });
+                             },
+                           ),
+                   ),
+                 ),
                 if (searchResults.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Container(
@@ -301,6 +349,7 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
     
     final success = await context.read<DeviceProvider>().unshareDevice(
       token: token,
+      dbId: widget.device.id,
       hwId: widget.device.deviceId,
       targetUserId: targetUserId,
     );

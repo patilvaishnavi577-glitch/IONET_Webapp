@@ -126,11 +126,11 @@ class DeviceProvider extends ChangeNotifier {
     return false;
   }
 
-  /// Fetch details of a single device by hardware ID and update it in local state
-  Future<bool> fetchDeviceDetails({required String token, required String hwId}) async {
-    final rawDevice = await _apiService.getDeviceById(token: token, deviceId: hwId);
+  /// Fetch details of a single device by database internal ID and update it in local state
+  Future<bool> fetchDeviceDetails({required String token, required String dbId}) async {
+    final rawDevice = await _apiService.getDeviceById(token: token, deviceId: dbId);
     if (rawDevice != null) {
-      final index = _devices.indexWhere((d) => d.deviceId == hwId);
+      final index = _devices.indexWhere((d) => d.id == dbId);
       final deviceName = rawDevice['deviceName']?.toString() ?? rawDevice['name']?.toString() ?? 'Device';
       final baseImageUrl = rawDevice['deviceImage']?.toString() ?? rawDevice['image']?.toString() ?? rawDevice['imageUrl']?.toString();
       final imageUrl = _cacheBustUrl(baseImageUrl);
@@ -216,8 +216,8 @@ class DeviceProvider extends ChangeNotifier {
     final isShared = device.isShared;
 
     final success = isShared
-        ? await _apiService.unshareDeviceBySharedUser(token: token, deviceId: device.deviceId)
-        : await _apiService.deleteDevice(token: token, deviceId: device.deviceId);
+        ? await _apiService.unshareDeviceBySharedUser(token: token, deviceId: device.id)
+        : await _apiService.deleteDevice(token: token, deviceId: device.id);
     _setLoading(false);
 
     if (success) {
@@ -247,7 +247,7 @@ class DeviceProvider extends ChangeNotifier {
     final device = _devices[index];
     final success = await _apiService.updateDeviceName(
       token: token,
-      deviceId: device.deviceId,
+      deviceId: device.id,
       deviceName: deviceName,
     );
     _setLoading(false);
@@ -270,7 +270,7 @@ class DeviceProvider extends ChangeNotifier {
     _setLoading(true);
     final success = await _apiService.shareDevice(
       token: token,
-      deviceId: hwId,
+      deviceId: dbId,
       targetUserId: targetUserId,
     );
     _setLoading(false);
@@ -280,13 +280,14 @@ class DeviceProvider extends ChangeNotifier {
   /// Unshare a device via backend API
   Future<bool> unshareDevice({
     required String token,
+    required String dbId,
     required String hwId,
     required String targetUserId,
   }) async {
     _setLoading(true);
     final success = await _apiService.unshareDevice(
       token: token,
-      deviceId: hwId,
+      deviceId: dbId,
       targetUserId: targetUserId,
     );
     _setLoading(false);
@@ -304,12 +305,12 @@ class DeviceProvider extends ChangeNotifier {
     _setLoading(true);
     final success = await _apiService.uploadDeviceImage(
       token: token,
-      deviceId: hwId,
+      deviceId: dbId,
       fileBytes: bytes,
       filename: filename,
     );
     if (success) {
-      await fetchDeviceDetails(token: token, hwId: hwId);
+      await fetchDeviceDetails(token: token, dbId: dbId);
     }
     _setLoading(false);
     return success;
@@ -324,10 +325,10 @@ class DeviceProvider extends ChangeNotifier {
     _setLoading(true);
     final success = await _apiService.deleteDeviceImage(
       token: token,
-      deviceId: hwId,
+      deviceId: dbId,
     );
     if (success) {
-      await fetchDeviceDetails(token: token, hwId: hwId);
+      await fetchDeviceDetails(token: token, dbId: dbId);
     }
     _setLoading(false);
     return success;
@@ -637,43 +638,41 @@ class DeviceProvider extends ChangeNotifier {
     String? textToShow;
     List<QuickCommand>? updatedCommands;
     
+    bool shouldAddMessage = true;
+
     try {
       final parsed = jsonDecode(rawText);
       if (parsed is Map) {
-        // 1. Format relay statuses cleanly if present
-        if (parsed.containsKey('Relay_1_Status') || parsed.containsKey('Relay_2_Status')) {
-          final r1 = parsed['Relay_1_Status'] ?? 'Off';
-          final r2 = parsed['Relay_2_Status'] ?? 'Off';
-          var text = 'Relay 1: $r1 | Relay 2: $r2';
-          
-          if (parsed.containsKey('availableCommands')) {
-            final commandsMap = parsed['availableCommands'];
-            if (commandsMap is Map && commandsMap.isNotEmpty) {
-              text += '\n\nAvailable Commands:';
-              commandsMap.forEach((key, val) {
-                text += '\n• $key : $val';
-              });
-            }
+        // 1. Dynamically format any relay statuses present (e.g. Relay_1_Status, Relay_2_Status, etc.)
+        final relayKeys = parsed.keys
+            .map((k) => k.toString())
+            .where((k) => RegExp(r'^Relay_\d+_Status$', caseSensitive: false).hasMatch(k))
+            .toList();
+
+        if (relayKeys.isNotEmpty) {
+          // Sort keys numerically by the digit in the key
+          relayKeys.sort((a, b) {
+            final numA = int.tryParse(RegExp(r'\d+').firstMatch(a)?.group(0) ?? '') ?? 0;
+            final numB = int.tryParse(RegExp(r'\d+').firstMatch(b)?.group(0) ?? '') ?? 0;
+            return numA.compareTo(numB);
+          });
+
+          final List<String> statusParts = [];
+          for (final key in relayKeys) {
+            final val = parsed[key]?.toString() ?? 'Off';
+            final numStr = RegExp(r'\d+').firstMatch(key)?.group(0) ?? '';
+            statusParts.add('Relay $numStr: $val');
           }
-          textToShow = text;
-        } else if (parsed.containsKey('availableCommands')) {
-          final commandsMap = parsed['availableCommands'];
-          if (commandsMap is Map && commandsMap.isNotEmpty) {
-            var text = 'Available Commands:';
-            commandsMap.forEach((key, val) {
-              text += '\n• $key : $val';
-            });
-            textToShow = text;
-          }
+          textToShow = statusParts.join(' | ');
         } else {
-          // 2. Filter out pure connection handshake / notification messages from chat log view
+          // If it is handshake or pure commands list payload without relay status, do not add message bubble
           final type = parsed['type']?.toString();
-          if (type == 'connected' || type == 'device_online') {
-            return;
+          if (type == 'connected' || type == 'device_online' || parsed.containsKey('availableCommands')) {
+            shouldAddMessage = false;
           }
         }
         
-        // 3. Dynamically extract quick action commands
+        // 2. Dynamically extract quick action commands to show at bottom input bar
         if (parsed.containsKey('availableCommands')) {
           final commandsMap = parsed['availableCommands'];
           if (commandsMap is Map) {
@@ -699,13 +698,6 @@ class DeviceProvider extends ChangeNotifier {
     // Fallback if not matching relay status but is standard text/JSON
     textToShow ??= rawText;
 
-    final replyMsg = ChatMessage(
-      id: 'ws_reply_${DateTime.now().millisecondsSinceEpoch}',
-      text: textToShow,
-      sender: MessageSender.device,
-      timestamp: DateTime.now(),
-    );
-
     var updatedDevice = device;
     if (updatedCommands != null) {
       updatedDevice = updatedDevice.copyWith(
@@ -713,9 +705,22 @@ class DeviceProvider extends ChangeNotifier {
       );
     }
 
-    final withReply = List<ChatMessage>.from(updatedDevice.messages)..add(replyMsg);
-    _devices[idx] = updatedDevice.copyWith(messages: withReply);
-    notifyListeners();
+    if (shouldAddMessage) {
+      final replyMsg = ChatMessage(
+        id: 'ws_reply_${DateTime.now().millisecondsSinceEpoch}',
+        text: textToShow,
+        sender: MessageSender.device,
+        timestamp: DateTime.now(),
+      );
+
+      final withReply = List<ChatMessage>.from(updatedDevice.messages)..add(replyMsg);
+      _devices[idx] = updatedDevice.copyWith(messages: withReply);
+      notifyListeners();
+    } else if (updatedCommands != null) {
+      // Just update device commands without adding a blank message bubble
+      _devices[idx] = updatedDevice;
+      notifyListeners();
+    }
   }
 
   void _cleanupSocket() {

@@ -603,78 +603,16 @@ class _DeviceChatViewState extends State<DeviceChatView> {
     final userBubbleColor = isDark ? const Color(0xFF005C4B) : const Color(0xFFD9FDD3);
     final deviceBubbleColor = isDark ? const Color(0xFF202C33) : Colors.white;
 
-    Widget bubbleContent;
-
-    if (!isUser && msg.text.contains('Available Commands:')) {
-      final parts = msg.text.split('Available Commands:');
-      final statusText = parts[0].trim();
-      final commandsBlock = parts.length > 1 ? parts[1].trim() : '';
-
-      final lines = commandsBlock.split('\n');
-      final parsedList = <Map<String, String>>[];
-      for (final line in lines) {
-        if (line.trim().startsWith('•')) {
-          final cleanLine = line.replaceFirst('•', '').trim();
-          final cmdParts = cleanLine.split(' : ');
-          if (cmdParts.isNotEmpty) {
-            final cmdKey = cmdParts[0].trim();
-            final cmdDesc = cmdParts.length > 1 ? cmdParts[1].trim() : '';
-            parsedList.add({'command': cmdKey, 'description': cmdDesc});
-          }
-        }
-      }
-
-      bubbleContent = Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (statusText.isNotEmpty) ...[
-            _buildRelayStatusHeader(statusText, isDark),
-            const SizedBox(height: 12),
-            Divider(color: secondaryTextColor.withOpacity(0.12), height: 1),
-            const SizedBox(height: 10),
-          ],
-          Row(
-            children: [
-              Icon(
-                Icons.settings_remote_rounded,
-                color: isDark ? const Color(0xFF2DD4BF).withOpacity(0.8) : const Color(0xFF008069).withOpacity(0.8),
-                size: 14,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'AVAILABLE ACTIONS',
-                style: TextStyle(
-                  color: isDark ? const Color(0xFF2DD4BF) : const Color(0xFF008069),
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.8,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: parsedList.map((cmd) => _buildCommandChip(
-                  command: cmd['command']!,
-                  isDark: isDark,
-                )).toList(),
-          ),
-        ],
-      );
-    } else {
-      bubbleContent = Text(
-        msg.text,
-        style: TextStyle(
-          color: isUser
-              ? (isDark ? Colors.white : AppTheme.textPrimaryLight)
-              : primaryTextColor,
-          fontSize: 14.5,
-          height: 1.3,
-        ),
-      );
-    }
+    final bubbleContent = Text(
+      msg.text,
+      style: TextStyle(
+        color: isUser
+            ? (isDark ? Colors.white : AppTheme.textPrimaryLight)
+            : primaryTextColor,
+        fontSize: 14.5,
+        height: 1.3,
+      ),
+    );
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
@@ -699,180 +637,31 @@ class _DeviceChatViewState extends State<DeviceChatView> {
               ),
             ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              bubbleContent,
-              const SizedBox(height: 4),
-              Align(
-                alignment: Alignment.bottomRight,
-                child: Text(
-                  msg.formattedTime,
-                  style: TextStyle(
-                    color: isUser
-                        ? (isDark ? Colors.white.withOpacity(0.7) : AppTheme.textSecondaryLight)
-                        : secondaryTextColor,
-                    fontSize: 10.5,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRelayStatusHeader(String statusText, bool isDark) {
-    final statusList = statusText.split('|');
-    final widgets = <Widget>[];
-
-    for (final status in statusList) {
-      final parts = status.split(':');
-      if (parts.length == 2) {
-        final name = parts[0].trim();
-        final state = parts[1].trim();
-        final isOn = state.toLowerCase() == 'on';
-
-        final activeColor = isOn ? const Color(0xFF10B981) : const Color(0xFFEF4444); // Emerald Green vs Red
-        final badgeColor = activeColor.withOpacity(0.12);
-
-        widgets.add(
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1F2C34).withOpacity(0.6) : const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08),
-                ),
-                boxShadow: isOn
-                    ? [
-                        BoxShadow(
-                          color: activeColor.withOpacity(0.15),
-                          blurRadius: 10,
-                          spreadRadius: -2,
-                          offset: const Offset(0, 4),
-                        )
-                      ]
-                    : null,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
+          child: IntrinsicWidth(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                bubbleContent,
+                const SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.bottomRight,
+                  child: Text(
+                    msg.formattedTime,
                     style: TextStyle(
-                      color: isDark ? AppTheme.textSecondary : AppTheme.textSecondaryLight,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.2,
+                      color: isUser
+                          ? (isDark ? Colors.white.withOpacity(0.7) : AppTheme.textSecondaryLight)
+                          : secondaryTextColor,
+                      fontSize: 10.5,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: activeColor,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: activeColor.withOpacity(0.5),
-                              blurRadius: 6,
-                              spreadRadius: 1,
-                            )
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: badgeColor,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          isOn ? 'ACTIVE' : 'INACTIVE',
-                          style: TextStyle(
-                            color: activeColor,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      }
-    }
-
-    return Row(
-      children: widgets,
-    );
-  }
-
-  Color _getCommandColor(String command) {
-    final lower = command.toLowerCase();
-    if (lower.contains('on')) return const Color(0xFF10B981); // Emerald Green
-    if (lower.contains('off')) return const Color(0xFFEF4444); // Red
-    if (lower.contains('status')) return const Color(0xFF3B82F6); // Blue
-    return const Color(0xFF8B5CF6); // Purple
-  }
-
-  Widget _buildCommandChip({
-    required String command,
-    required bool isDark,
-  }) {
-    final cmdColor = _getCommandColor(command);
-    final cardBg = isDark ? const Color(0xFF1F2C34) : const Color(0xFFF8FAFC);
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => _handleSend(command),
-        borderRadius: BorderRadius.circular(16),
-        hoverColor: cmdColor.withOpacity(0.08),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: cardBg,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: cmdColor.withOpacity(0.4),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.play_arrow_rounded,
-                color: cmdColor,
-                size: 14,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                command,
-                style: TextStyle(
-                  fontFamily: 'monospace',
-                  fontWeight: FontWeight.w600,
-                  color: cmdColor,
-                  fontSize: 11.5,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+
+
 }
