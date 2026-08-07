@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/channel_model.dart';
+import '../providers/knowledge_provider.dart';
+import '../providers/user_session_provider.dart';
 import '../providers/theme_provider.dart';
 import '../theme/app_theme.dart';
 
@@ -42,6 +44,8 @@ class ChannelFeedView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDarkMode;
+    final knowledgeProvider = context.watch<KnowledgeProvider>();
+    final isFollowing = knowledgeProvider.isFollowing(channel.id);
 
     final headerBg = isDark ? const Color(0xFF111B21) : const Color(0xFFF0F2F5);
     final borderCol = isDark ? AppTheme.cardBorder : AppTheme.cardBorderLight;
@@ -89,20 +93,42 @@ class ChannelFeedView extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      channel.followers,
-                      style: TextStyle(
-                        color: textSecondaryColor,
-                        fontSize: 12,
-                      ),
-                    ),
                   ],
                 ),
               ),
-              IconButton(
+
+              PopupMenuButton<String>(
                 icon: Icon(Icons.more_vert, color: textSecondaryColor),
-                onPressed: () {},
+                color: isDark ? const Color(0xFF233138) : Colors.white,
+                elevation: 4,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                offset: const Offset(0, 40),
+                onSelected: (value) async {
+                  if (value == 'unfollow') {
+                    final token = context.read<UserSessionProvider>().session.token;
+                    if (token == null) return;
+                    final messenger = ScaffoldMessenger.of(context);
+                    
+                    final error = await knowledgeProvider.toggleFollow(channel.id, token);
+                    if (error != null) {
+                      messenger.showSnackBar(SnackBar(content: Text('Failed to unfollow: $error'), backgroundColor: Colors.redAccent));
+                    }
+                  }
+                },
+                itemBuilder: (context) => [
+                  if (isFollowing)
+                    PopupMenuItem(
+                      value: 'unfollow',
+                      height: 40,
+                      child: Text(
+                        'Unfollow Channel',
+                        style: TextStyle(
+                          color: isDark ? const Color(0xFFD1D7DB) : Colors.black87,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ],
           ),
@@ -172,18 +198,12 @@ class ChannelFeedView extends StatelessWidget {
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12.0),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: cardBg,
-                              borderRadius: BorderRadius.circular(14),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.08),
-                                  blurRadius: 3,
-                                  offset: const Offset(0, 1),
-                                ),
-                              ],
-                            ),
+                          child: Material(
+                            color: cardBg,
+                            borderRadius: BorderRadius.circular(14),
+                            elevation: 1,
+                            shadowColor: Colors.black.withValues(alpha: 0.3),
+                            clipBehavior: Clip.antiAlias,
                             child: ListTile(
                               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                               leading: Container(

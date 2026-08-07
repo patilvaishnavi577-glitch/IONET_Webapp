@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/channel_model.dart';
 import '../providers/knowledge_provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/user_session_provider.dart';
 import '../theme/app_theme.dart';
 import 'channel_feed_view.dart';
 
@@ -36,9 +37,10 @@ class _KnowledgeViewState extends State<KnowledgeView> {
     }
 
     final allChannels = knowledgeProvider.channels;
+    final followedChannels = allChannels.where((c) => knowledgeProvider.isFollowing(c.id)).toList();
+    final findChannels = allChannels.where((c) => !knowledgeProvider.isFollowing(c.id)).toList();
 
     final textPrimaryColor = isDark ? AppTheme.textPrimary : AppTheme.textPrimaryLight;
-    final textSecondaryColor = isDark ? AppTheme.textSecondary : AppTheme.textSecondaryLight;
     final borderCol = isDark ? AppTheme.cardBorder : AppTheme.cardBorderLight;
     final sidebarBg = isDark ? const Color(0xFF111B21) : Colors.white;
 
@@ -78,36 +80,82 @@ class _KnowledgeViewState extends State<KnowledgeView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Channels',
-                    style: TextStyle(
-                      color: textPrimaryColor,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                  if (followedChannels.isNotEmpty) ...[
+                    Text(
+                      'Following',
+                      style: TextStyle(
+                        color: textPrimaryColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Stay updated on topics that matter to you.',
-                    style: TextStyle(
-                      color: textSecondaryColor,
-                      fontSize: 13,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 16),
+                    ...followedChannels.map((channel) {
+                      final isSelectedOnDesktop = isDesktop && selectedChannel?.id == channel.id;
+                      return _buildChannelTile(
+                        channel: channel,
+                        isDark: isDark,
+                        isSelected: isSelectedOnDesktop,
+                        isFollowing: true,
+                        onTap: () {
+                          knowledgeProvider.selectChannel(channel.id);
+                        },
+                        onFollowToggle: () async {
+                          final token = context.read<UserSessionProvider>().session.token;
+                          if (token == null) return;
+                          final messenger = ScaffoldMessenger.of(context);
+                          
+                          final error = await knowledgeProvider.toggleFollow(channel.id, token);
+                          if (error != null) {
+                            String messageText = 'Failed to update follow status: $error';
+                            if (error.toLowerCase().contains('limit')) {
+                              messageText = 'Follow limit exceeded! You cannot follow more channels.';
+                            }
+                            messenger.showSnackBar(SnackBar(content: Text(messageText), backgroundColor: Colors.redAccent));
+                          }
+                        },
+                      );
+                    }),
+                    const SizedBox(height: 16),
+                  ],
 
-                  ...allChannels.map((channel) {
-                    final isSelectedOnDesktop = isDesktop && selectedChannel?.id == channel.id;
-                    return _buildChannelTile(
-                      channel: channel,
-                      isDark: isDark,
-                      isSelected: isSelectedOnDesktop,
-                      onTap: () {
-                        knowledgeProvider.selectChannel(channel.id);
-                      },
-                    );
-                  }),
+                  if (findChannels.isNotEmpty) ...[
+                    Text(
+                      'Find Channels',
+                      style: TextStyle(
+                        color: textPrimaryColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ...findChannels.map((channel) {
+                      final isSelectedOnDesktop = isDesktop && selectedChannel?.id == channel.id;
+                      return _buildChannelTile(
+                        channel: channel,
+                        isDark: isDark,
+                        isSelected: isSelectedOnDesktop,
+                        isFollowing: false,
+                        onTap: () {
+                          knowledgeProvider.selectChannel(channel.id);
+                        },
+                        onFollowToggle: () async {
+                          final token = context.read<UserSessionProvider>().session.token;
+                          if (token == null) return;
+                          final messenger = ScaffoldMessenger.of(context);
+                          
+                          final error = await knowledgeProvider.toggleFollow(channel.id, token);
+                          if (error != null) {
+                            String messageText = 'Failed to update follow status: $error';
+                            if (error.toLowerCase().contains('limit')) {
+                              messageText = 'Follow limit exceeded! You cannot follow more channels.';
+                            }
+                            messenger.showSnackBar(SnackBar(content: Text(messageText), backgroundColor: Colors.redAccent));
+                          }
+                        },
+                      );
+                    }),
+                  ],
                 ],
               ),
             ),
@@ -121,7 +169,9 @@ class _KnowledgeViewState extends State<KnowledgeView> {
     required Channel channel,
     required bool isDark,
     required bool isSelected,
+    required bool isFollowing,
     required VoidCallback onTap,
+    required VoidCallback onFollowToggle,
   }) {
     final textPrimaryColor = isDark ? AppTheme.textPrimary : AppTheme.textPrimaryLight;
     final textSecondaryColor = isDark ? AppTheme.textSecondary : AppTheme.textSecondaryLight;
@@ -170,15 +220,33 @@ class _KnowledgeViewState extends State<KnowledgeView> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      channel.followers,
-                      style: TextStyle(
-                        color: textSecondaryColor,
-                        fontSize: 12,
-                      ),
-                    ),
                   ],
+                ),
+              ),
+              InkWell(
+                onTap: isFollowing ? null : onFollowToggle,
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        isFollowing ? 'Following' : 'Follow',
+                        style: TextStyle(
+                          color: isFollowing ? textSecondaryColor : accentGreen,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.chevron_right,
+                        color: textSecondaryColor,
+                        size: 20,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],

@@ -1,10 +1,10 @@
 {
   "info": {
-    "_postman_id": "dd47fc0a-d77a-46b0-9a2a-4a15950539a9",
+    "_postman_id": "60a6075d-9d0a-41d6-83b3-649682dffd3b",
     "name": "IONET-2.0",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "46105783",
-    "_collection_link": "https://go.postman.co/collection/46105783-dd47fc0a-d77a-46b0-9a2a-4a15950539a9?source=collection_link"
+    "_exporter_id": "53236318",
+    "_collection_link": "https://go.postman.co/collection/53236318-60a6075d-9d0a-41d6-83b3-649682dffd3b?source=collection_link"
   },
   "item": [
     {
@@ -281,6 +281,42 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "Search User By Email or Name",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_secret_09kk}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{dev}}/api/v1/users/search?query=roh",
+              "host": [
+                "{{dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "roh"
+                }
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -492,42 +528,6 @@
                     "devices",
                     "IONET001",
                     "image"
-                  ]
-                }
-              },
-              "response": []
-            },
-            {
-              "name": "Search User By Email or Name",
-              "request": {
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{auth_secret_09kk}}",
-                      "type": "string"
-                    }
-                  ]
-                },
-                "method": "GET",
-                "header": [],
-                "url": {
-                  "raw": "{{dev}}/api/v1/users/search?query=roh",
-                  "host": [
-                    "{{dev}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "users",
-                    "search"
-                  ],
-                  "query": [
-                    {
-                      "key": "query",
-                      "value": "roh"
-                    }
                   ]
                 }
               },
@@ -872,6 +872,14 @@
                 "{id}"
               ]
             }
+          },
+          "response": []
+        },
+        {
+          "name": "New Request",
+          "request": {
+            "method": "GET",
+            "header": []
           },
           "response": []
         }
@@ -1976,6 +1984,100 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "Follow Channel",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_secret_09kk}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{dev}}/api/v1/users/channels/6a6753eef19448eb1649708e/follow",
+              "host": [
+                "{{dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "channels",
+                "6a6753eef19448eb1649708e",
+                "follow"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Unfollow Channel",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{supabase_service_role_api_key_01zc}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{dev}}/api/v1/users/channels/6a730c25df4fb5c9d4746994/unfollow",
+              "host": [
+                "{{dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "channels",
+                "6a730c25df4fb5c9d4746994",
+                "unfollow"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Subscribed Channels",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_secret_09kk}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{dev}}/api/v1/users/subscribed-channels",
+              "host": [
+                "{{dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "subscribed-channels"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -2006,13 +2108,76 @@
   ],
   "variable": [
     {
-      "key": "auth_secret_09kk"
+      "key": "auth_secret_09kk",
+      "secret": true,
+      "source": {
+        "provider": "postman",
+        "postman": {
+          "type": "cloud",
+          "secretId": "618c5a58-0325-4524-af11-c7d41f11f2cd",
+          "vaultId": "5a536560-b85b-40d7-894d-ab3ddc3603e7"
+        }
+      }
     },
     {
-      "key": "json_web_token_09kk"
+      "key": "json_web_token_09kk",
+      "secret": true,
+      "source": {
+        "provider": "postman",
+        "postman": {
+          "type": "cloud",
+          "secretId": "c5991ccc-230b-49c0-bd35-b5875a2948df",
+          "vaultId": "5a536560-b85b-40d7-894d-ab3ddc3603e7"
+        }
+      }
     },
     {
-      "key": "admin"
+      "key": "admin",
+      "secret": true,
+      "source": {
+        "provider": "postman",
+        "postman": {
+          "type": "cloud",
+          "secretId": "d2f2ce57-0466-4d4f-98a6-97fe364faff9",
+          "vaultId": "5a536560-b85b-40d7-894d-ab3ddc3603e7"
+        }
+      }
+    },
+    {
+      "key": "json_web_token_01zc",
+      "secret": true,
+      "source": {
+        "provider": "postman",
+        "postman": {
+          "type": "cloud",
+          "secretId": "ff45ab42-a75a-40b3-8734-a1c17cdffafc",
+          "vaultId": "5a536560-b85b-40d7-894d-ab3ddc3603e7"
+        }
+      }
+    },
+    {
+      "key": "supabase_service_role_api_key_01zc",
+      "secret": true,
+      "source": {
+        "provider": "postman",
+        "postman": {
+          "type": "cloud",
+          "secretId": "3739d974-5788-4a72-ac78-117dcb7788f9",
+          "vaultId": "5a536560-b85b-40d7-894d-ab3ddc3603e7"
+        }
+      }
+    },
+    {
+      "key": "auth_secret_01zc",
+      "secret": true,
+      "source": {
+        "provider": "postman",
+        "postman": {
+          "type": "cloud",
+          "secretId": "9132d6d9-f180-4b9b-b6f1-e0bf617b7e33",
+          "vaultId": "5a536560-b85b-40d7-894d-ab3ddc3603e7"
+        }
+      }
     }
   ]
 }

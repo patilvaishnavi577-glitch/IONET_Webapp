@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_session.dart';
 import '../services/api_service.dart';
 import '../config/api_config.dart';
@@ -6,8 +7,51 @@ import '../config/api_config.dart';
 /// Provider managing application session state and real auth API workflows.
 class UserSessionProvider extends ChangeNotifier {
   final ApiService _apiService = ApiService();
+  final SharedPreferences? _prefs;
+  
   UserSession _session = UserSession.initial();
   bool _isLoading = false;
+
+  UserSessionProvider({SharedPreferences? prefs}) : _prefs = prefs {
+    _loadSession();
+  }
+
+  void _loadSession() {
+    if (_prefs == null) return;
+    final token = _prefs!.getString('auth_token');
+    if (token != null && token.isNotEmpty) {
+      _session = _session.copyWith(
+        token: token,
+        isAuthenticated: true,
+      );
+      // We asynchronously fetch the user profile here to hydrate the state
+      _fetchProfileAndHydrate(token);
+    }
+  }
+
+  Future<void> _fetchProfileAndHydrate(String token) async {
+    _setLoading(true);
+    final profile = await _apiService.getUserMe(token);
+    if (profile != null) {
+      final id = profile['id']?.toString() ?? profile['_id']?.toString();
+      final name = profile['name']?.toString() ?? '';
+      final phone = profile['phoneNumber']?.toString() ?? '';
+      final avatar = profile['profilePictureUrl']?.toString() ??
+          profile['profilePicture']?.toString() ??
+          '';
+
+      _session = _session.copyWith(
+        fullName: name,
+        mobileNumber: phone,
+        profilePictureUrl: _formatAvatarUrl(avatar),
+        userId: id,
+      );
+    } else {
+      // If profile fetch fails (e.g. token expired), we should probably clear it
+      logout();
+    }
+    _setLoading(false);
+  }
 
   UserSession get session => _session;
   bool get isLoading => _isLoading;
@@ -87,6 +131,7 @@ class UserSessionProvider extends ChangeNotifier {
         sessionStartTime: DateTime.now(),
         userId: id,
       );
+      _prefs?.setString('auth_token', token);
     } else {
       // New User: must fill profile name and phone number
       _session = _session.copyWith(
@@ -126,6 +171,7 @@ class UserSessionProvider extends ChangeNotifier {
         sessionStartTime: DateTime.now(),
         userId: id,
       );
+      _prefs?.setString('auth_token', _session.token!);
     }
 
     _setLoading(false);
@@ -219,6 +265,7 @@ class UserSessionProvider extends ChangeNotifier {
   void logout() {
     _session = UserSession.initial();
     _isLoading = false;
+    _prefs?.remove('auth_token');
     notifyListeners();
   }
 

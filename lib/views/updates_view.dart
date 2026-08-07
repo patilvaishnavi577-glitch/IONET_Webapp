@@ -172,7 +172,7 @@ class UpdatesView extends StatelessWidget {
     final isDark = context.read<ThemeProvider>().isDarkMode;
     final hoverBg = isDark ? const Color(0xFF202C33) : const Color(0xFFF0F2F5);
 
-    return Container(
+    return Material(
       color: isSelected ? hoverBg : Colors.transparent,
       child: ListTile(
         onTap: () {

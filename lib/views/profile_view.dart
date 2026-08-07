@@ -134,10 +134,31 @@ class _ProfileViewState extends State<ProfileView> {
       } else if (value == 'upload') {
         _pickAndUploadAvatar(sessionProvider);
       } else if (value == 'remove') {
-        final messenger = ScaffoldMessenger.of(context);
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogCtx) => AlertDialog(
+            backgroundColor: Theme.of(context).cardColor,
+            title: const Text('Remove Avatar'),
+            content: const Text('Are you sure you want to remove your profile picture?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogCtx).pop(false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+                onPressed: () => Navigator.of(dialogCtx).pop(true),
+                child: const Text('Remove'),
+              ),
+            ],
+          ),
+        );
+
+        if (confirmed != true) return;
+
         final success = await sessionProvider.deleteAvatar();
         if (mounted) {
-          messenger.showSnackBar(
+          ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(success ? 'Avatar removed successfully!' : 'Failed to remove avatar.'),
               backgroundColor: success ? Colors.green : Colors.redAccent,

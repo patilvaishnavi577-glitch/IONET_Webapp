@@ -34,6 +34,7 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
     await context.read<DeviceProvider>().fetchDeviceDetails(
           token: token,
           dbId: widget.device.id,
+          hwId: widget.device.deviceId,
         );
     if (mounted) {
       setState(() => _isLoading = false);
@@ -313,24 +314,37 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
 
                 Navigator.of(dialogContext).pop();
 
-                final success = await deviceProvider.shareDevice(
+                final error = await deviceProvider.shareDevice(
                   token: token!,
                   dbId: widget.device.id,
                   hwId: widget.device.deviceId,
                   targetUserId: targetUserId,
                 );
                 
-                if (success) {
+                if (error == null) {
                   _fetchDetails(); // Refresh list after sharing
                 }
 
                 if (!stateContext.mounted) return;
 
                 if (mounted) {
+                  String messageText = 'Device shared successfully!';
+                  Color snackColor = Colors.green;
+                  
+                  if (error != null) {
+                    snackColor = Colors.redAccent;
+                    // Custom validation/exception handling for share limits
+                    if (error.toLowerCase().contains('limit')) {
+                      messageText = 'Share limit exceeded! You cannot share this device with more users.';
+                    } else {
+                      messageText = 'Failed to share: $error';
+                    }
+                  }
+                  
                   messenger.showSnackBar(
                     SnackBar(
-                      content: Text(success ? 'Device shared successfully!' : 'Failed to share device.'),
-                      backgroundColor: success ? Colors.green : Colors.redAccent,
+                      content: Text(messageText),
+                      backgroundColor: snackColor,
                     ),
                   );
                 }
@@ -344,6 +358,28 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
   }
 
   Future<void> _handleUnshareUser(String targetUserId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: Theme.of(context).cardColor,
+        title: const Text('Remove User'),
+        content: const Text('Are you sure you want to remove this user\'s access to the device?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+            onPressed: () => Navigator.of(dialogCtx).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
     final token = context.read<UserSessionProvider>().session.token;
     if (token == null) return;
     
@@ -369,6 +405,28 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
   }
 
   Future<void> _handleLeaveDevice() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: Theme.of(context).cardColor,
+        title: const Text('Leave Device'),
+        content: const Text('Are you sure you want to leave this device? You will lose access to it.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+            onPressed: () => Navigator.of(dialogCtx).pop(true),
+            child: const Text('Leave'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
     final token = context.read<UserSessionProvider>().session.token;
     if (token == null) return;
     
@@ -565,6 +623,28 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
     }
 
     Future<void> _deleteDeviceImage(BuildContext context) async {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogCtx) => AlertDialog(
+          backgroundColor: Theme.of(context).cardColor,
+          title: const Text('Remove Photo'),
+          content: const Text('Are you sure you want to remove the device photo?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+              onPressed: () => Navigator.of(dialogCtx).pop(true),
+              child: const Text('Remove'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) return;
+
       final messenger = ScaffoldMessenger.of(context);
       final userSession = context.read<UserSessionProvider>();
       final deviceProv = context.read<DeviceProvider>();
@@ -760,29 +840,7 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                       ],
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: device.isOnline ? const Color(0xFF2DD4BF) : Colors.redAccent,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        device.isOnline ? 'ONLINE' : 'OFFLINE',
-                        style: TextStyle(
-                          color: device.isOnline ? const Color(0xFF2DD4BF) : Colors.redAccent,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ],
-                  ),
+
                   const SizedBox(height: 40),
                   
                   // Device Details Card
@@ -817,14 +875,7 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                           iconColor: accentGreen,
                           textColor: textPri,
                         ),
-                        const Divider(height: 24),
-                        _buildDetailRow(
-                          icon: Icons.access_time,
-                          title: 'Last Seen',
-                          value: device.lastActiveTime.isNotEmpty ? device.lastActiveTime : 'Never',
-                          iconColor: accentGreen,
-                          textColor: textPri,
-                        ),
+
                       ],
                     ),
                   ),

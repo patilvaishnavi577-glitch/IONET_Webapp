@@ -403,6 +403,41 @@ class ApiService {
     }
   }
 
+  /// GET /api/v1/users/subscribed-channels
+  /// Retrieves list of subscribed channels.
+  Future<List<String>?> getSubscribedChannels(String token) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/api/v1/users/subscribed-channels');
+    try {
+      final response = await _client.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        if (body is Map && body['success'] == true && body['data'] is List) {
+          final data = body['data'] as List;
+          final List<String> ids = [];
+          for (var item in data) {
+            if (item is String) {
+              ids.add(item);
+            } else if (item is Map) {
+              final id = item['id']?.toString() ?? item['_id']?.toString();
+              if (id != null) ids.add(id);
+            }
+          }
+          return ids;
+        }
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
 
   MediaType _resolveMediaType(String filename) {
     final lower = filename.toLowerCase();
@@ -558,7 +593,7 @@ class ApiService {
 
   /// POST /api/v1/devices/{deviceId}/share
   /// Shares device control with target user ID.
-  Future<bool> shareDevice({
+  Future<String?> shareDevice({
     required String token,
     required String deviceId,
     required String targetUserId,
@@ -583,14 +618,25 @@ class ApiService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final body = jsonDecode(response.body);
         if (body is Map && body['success'] == true) {
-          return true;
+          return null; // Success
         }
       }
-      return false;
+      
+      // Parse error message if available
+      try {
+        final body = jsonDecode(response.body);
+        if (body is Map) {
+          if (body['message'] != null) return body['message'].toString();
+          if (body['error'] != null) return body['error'].toString();
+          return response.body;
+        }
+      } catch (_) {}
+
+      return response.body.isNotEmpty ? response.body : 'Failed to share device. Server returned ${response.statusCode}.';
     } catch (e) {
       // ignore: avoid_print
       print('SHARE DEVICE ERROR: $e');
-      return false;
+      return 'An error occurred while connecting to the server.';
     }
   }
 
@@ -886,6 +932,68 @@ class ApiService {
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (_) {
       return false;
+    }
+  }
+
+  /// POST /api/v1/users/channels/{channelId}/follow
+  /// Follow a channel
+  Future<String?> followChannel({
+    required String token,
+    required String channelId,
+  }) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/api/v1/users/channels/$channelId/follow');
+    try {
+      final response = await _client.post(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) return null;
+      try {
+        final body = jsonDecode(response.body);
+        if (body is Map) {
+          if (body['message'] != null) return body['message'].toString();
+          if (body['error'] != null) return body['error'].toString();
+          return response.body;
+        }
+      } catch (_) {}
+      return response.body.isNotEmpty ? response.body : 'Failed to follow. Server returned ${response.statusCode}';
+    } catch (e) {
+      print('FOLLOW CHANNEL ERROR: $e');
+      return 'An error occurred while following the channel.';
+    }
+  }
+
+  /// DELETE /api/v1/users/channels/{channelId}/unfollow
+  /// Unfollow a channel
+  Future<String?> unfollowChannel({
+    required String token,
+    required String channelId,
+  }) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/api/v1/users/channels/$channelId/unfollow');
+    try {
+      final response = await _client.delete(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (response.statusCode == 200 || response.statusCode == 204) return null;
+      try {
+        final body = jsonDecode(response.body);
+        if (body is Map) {
+          if (body['message'] != null) return body['message'].toString();
+          if (body['error'] != null) return body['error'].toString();
+          return response.body;
+        }
+      } catch (_) {}
+      return response.body.isNotEmpty ? response.body : 'Failed to unfollow. Server returned ${response.statusCode}';
+    } catch (e) {
+      print('UNFOLLOW CHANNEL ERROR: $e');
+      return 'An error occurred while unfollowing the channel.';
     }
   }
 }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'providers/device_provider.dart';
 import 'providers/knowledge_provider.dart';
 import 'providers/theme_provider.dart';
@@ -10,13 +12,15 @@ import 'providers/updates_provider.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const IonetOnboardingApp());
+  final prefs = await SharedPreferences.getInstance();
+  runApp(IonetOnboardingApp(prefs: prefs));
 }
 
 class IonetOnboardingApp extends StatefulWidget {
-  const IonetOnboardingApp({super.key});
+  final SharedPreferences prefs;
+  const IonetOnboardingApp({super.key, required this.prefs});
 
   @override
   State<IonetOnboardingApp> createState() => _IonetOnboardingAppState();
@@ -33,7 +37,7 @@ class _IonetOnboardingAppState extends State<IonetOnboardingApp> {
   @override
   void initState() {
     super.initState();
-    _sessionProvider = UserSessionProvider();
+    _sessionProvider = UserSessionProvider(prefs: widget.prefs);
     _deviceProvider = DeviceProvider();
     _themeProvider = ThemeProvider();
     _knowledgeProvider = KnowledgeProvider();

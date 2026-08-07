@@ -6,6 +6,7 @@ import '../providers/device_provider.dart';
 import '../providers/theme_provider.dart';
 import '../theme/app_theme.dart';
 import '../views/device_profile_view.dart';
+import 'package:flutter/gestures.dart';
 
 class DeviceChatView extends StatefulWidget {
   final Device device;
@@ -61,6 +62,7 @@ class _DeviceChatViewState extends State<DeviceChatView> {
   }
 
   void _handleSend([String? prefilledCommand]) {
+    if (!widget.device.isOnline) return;
     final text = prefilledCommand ?? _textController.text;
     if (text.trim().isEmpty) return;
 
@@ -275,12 +277,34 @@ class _DeviceChatViewState extends State<DeviceChatView> {
                   Row(
                     children: [
                       TextButton(
-                        onPressed: () {
-                          context.read<DeviceProvider>().deleteQuickCommand(
-                                widget.device.id,
-                                indexToEdit,
-                              );
-                          Navigator.of(dialogContext).pop();
+                        onPressed: () async {
+                          final confirmed = await showDialog<bool>(
+                            context: context,
+                            builder: (dialogCtx) => AlertDialog(
+                              backgroundColor: Theme.of(context).cardColor,
+                              title: const Text('Delete Command'),
+                              content: const Text('Are you sure you want to delete this quick command?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(dialogCtx).pop(false),
+                                  child: const Text('Cancel'),
+                                ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+                                  onPressed: () => Navigator.of(dialogCtx).pop(true),
+                                  child: const Text('Delete'),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (confirmed == true) {
+                            context.read<DeviceProvider>().deleteQuickCommand(
+                                  widget.device.id,
+                                  indexToEdit,
+                                );
+                            if (mounted) Navigator.of(dialogContext).pop();
+                          }
                         },
                         child: const Text(
                           'Delete',
@@ -424,7 +448,9 @@ class _DeviceChatViewState extends State<DeviceChatView> {
                             width: 8,
                             height: 8,
                             decoration: BoxDecoration(
-                              color: widget.device.isOnline ? const Color(0xFF2DD4BF) : Colors.redAccent,
+                              color: widget.device.isOnline 
+                                  ? const Color(0xFF2DD4BF) 
+                                  : (widget.device.statusMessage == 'Connecting...' ? Colors.orangeAccent : Colors.redAccent),
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -432,11 +458,13 @@ class _DeviceChatViewState extends State<DeviceChatView> {
                           Text(
                             widget.device.isOnline
                                 ? 'Online'
-                                : (widget.device.lastActiveTime.isNotEmpty && widget.device.lastActiveTime != 'Never'
-                                    ? 'Offline • ${widget.device.lastActiveTime}'
-                                    : 'Offline'),
+                                : (widget.device.statusMessage == 'Connecting...'
+                                    ? 'Connecting...'
+                                    : (widget.device.lastActiveTime.isNotEmpty && widget.device.lastActiveTime != 'Never'
+                                        ? 'Offline • ${widget.device.lastActiveTime}'
+                                        : 'Offline')),
                             style: TextStyle(
-                              color: widget.device.isOnline ? const Color(0xFF2DD4BF) : textSecondaryColor,
+                              color: widget.device.isOnline ? const Color(0xFF2DD4BF) : (widget.device.statusMessage == 'Connecting...' ? Colors.orangeAccent : textSecondaryColor),
                               fontSize: 12,
                             ),
                           ),
@@ -451,71 +479,23 @@ class _DeviceChatViewState extends State<DeviceChatView> {
         ),
       ),
 
+
+
         // 2. Chat Message Stream (WhatsApp classic chat background)
         Expanded(
           child: Container(
             color: chatBg,
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                final msg = messages[index];
-                return _buildMessageBubble(msg, isDark);
-              },
-            ),
-          ),
-        ),
-
-        // 3. Quick Action Chips Row with working + Button
-        Container(
-          height: 48,
-          color: headerBg,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: [
-              ...Iterable.generate(widget.device.quickCommands.length).map((index) {
-                final cmd = widget.device.quickCommands[index];
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: GestureDetector(
-                    onLongPress: () => _showEditCommandDialog(context, index, cmd, isDark),
-                    child: ActionChip(
-                      onPressed: () => _handleSend(cmd.message),
-                      label: Text(cmd.label),
-                      labelStyle: TextStyle(
-                        color: textPrimaryColor,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      backgroundColor: textInputFill,
-                      side: BorderSide(color: borderCol),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                    ),
+            child: (!widget.device.isOnline || messages.isEmpty)
+                ? _buildEmptyState(isDark, textPrimaryColor, textSecondaryColor, accentGreen)
+                : ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final msg = messages[index];
+                      return _buildMessageBubble(msg, isDark, accentGreen);
+                    },
                   ),
-                );
-              }),
-
-              // Working Add Quick Command (+) Button
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: accentGreen,
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  padding: EdgeInsets.zero,
-                  icon: const Icon(Icons.add, color: Colors.white, size: 20),
-                  onPressed: () => _showAddCommandDialog(context, isDark),
-                  tooltip: 'Add Quick Command',
-                ),
-              ),
-            ],
           ),
         ),
 
@@ -525,12 +505,44 @@ class _DeviceChatViewState extends State<DeviceChatView> {
           color: inputBarBg,
           child: Row(
             children: [
+              // STATUS Button
+              GestureDetector(
+                onTap: widget.device.isOnline ? () => _handleSend('/status') : null,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: widget.device.isOnline ? accentGreen : textSecondaryColor.withOpacity(0.3),
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.show_chart_rounded, color: widget.device.isOnline ? accentGreen : textSecondaryColor.withOpacity(0.5), size: 20),
+                      const SizedBox(height: 2),
+                      Text(
+                        'STATUS',
+                        style: TextStyle(
+                          color: widget.device.isOnline ? accentGreen : textSecondaryColor.withOpacity(0.5),
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: TextField(
                   controller: _textController,
+                  enabled: widget.device.isOnline && messages.isNotEmpty,
                   style: TextStyle(color: textPrimaryColor, fontSize: 15),
                   decoration: InputDecoration(
-                    hintText: 'Type a message...',
+                    hintText: widget.device.isOnline 
+                        ? (messages.isNotEmpty ? 'Send command...' : 'Request status first')
+                        : (widget.device.statusMessage == 'Connecting...' ? 'Connecting...' : 'Device offline'),
                     hintStyle: TextStyle(color: textSecondaryColor),
                     filled: true,
                     fillColor: textInputFill,
@@ -547,12 +559,12 @@ class _DeviceChatViewState extends State<DeviceChatView> {
 
               // Circular WhatsApp Styled Send Button
               GestureDetector(
-                onTap: () => _handleSend(),
+                onTap: (widget.device.isOnline && messages.isNotEmpty) ? () => _handleSend() : null,
                 child: Container(
                   width: 46,
                   height: 46,
                   decoration: BoxDecoration(
-                    color: accentGreen,
+                    color: (widget.device.isOnline && messages.isNotEmpty) ? accentGreen : (isDark ? const Color(0xFF374151) : const Color(0xFFD1D5DB)),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -595,7 +607,7 @@ class _DeviceChatViewState extends State<DeviceChatView> {
     );
   }
 
-  Widget _buildMessageBubble(ChatMessage msg, bool isDark) {
+  Widget _buildMessageBubble(ChatMessage msg, bool isDark, Color accentGreen) {
     final isUser = msg.isUser;
     final primaryTextColor = isDark ? AppTheme.textPrimary : AppTheme.textPrimaryLight;
     final secondaryTextColor = isDark ? AppTheme.textSecondary : AppTheme.textSecondaryLight;
@@ -603,15 +615,13 @@ class _DeviceChatViewState extends State<DeviceChatView> {
     final userBubbleColor = isDark ? const Color(0xFF005C4B) : const Color(0xFFD9FDD3);
     final deviceBubbleColor = isDark ? const Color(0xFF202C33) : Colors.white;
 
-    final bubbleContent = Text(
-      msg.text,
-      style: TextStyle(
-        color: isUser
-            ? (isDark ? Colors.white : AppTheme.textPrimaryLight)
-            : primaryTextColor,
-        fontSize: 14.5,
-        height: 1.3,
-      ),
+    final bubbleContent = CommandText(
+      text: msg.text,
+      isUser: isUser,
+      isDark: isDark,
+      accentGreen: accentGreen,
+      primaryTextColor: primaryTextColor,
+      onCommandTap: (cmd) => _handleSend(cmd),
     );
 
     return Padding(
@@ -663,5 +673,199 @@ class _DeviceChatViewState extends State<DeviceChatView> {
     );
   }
 
+  String _getInitials(String name) {
+    final parts = name.split(' ').where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return 'D';
+    if (parts.length == 1) return parts[0].substring(0, 1).toUpperCase();
+    return (parts[0].substring(0, 1) + parts[1].substring(0, 1)).toUpperCase();
+  }
 
+  Widget _buildEmptyState(bool isDark, Color textPrimaryColor, Color textSecondaryColor, Color accentGreen) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircleAvatar(
+            radius: 40,
+            backgroundColor: isDark ? const Color(0xFFD1D7DB) : const Color(0xFFE0E0E0),
+            child: Text(
+              _getInitials(widget.device.name),
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: isDark ? const Color(0xFF111B21) : const Color(0xFF54656F),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Start chat with ${widget.device.name}',
+            style: TextStyle(
+              color: textPrimaryColor,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Request a live status report to see device data\nand available commands.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: textSecondaryColor,
+              fontSize: 14,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 32),
+          ElevatedButton.icon(
+            onPressed: widget.device.isOnline ? () => _handleSend('/status') : null,
+            icon: const Icon(Icons.show_chart_rounded),
+            label: const Text('Get device status'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: widget.device.isOnline ? accentGreen : (isDark ? const Color(0xFF2A3942) : const Color(0xFFE0E0E0)),
+              foregroundColor: widget.device.isOnline ? Colors.white : (isDark ? Colors.white54 : textSecondaryColor),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              elevation: 0,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            widget.device.isOnline 
+                ? 'Device is online. Ready to send commands.' 
+                : (widget.device.statusMessage == 'Connecting...' ? 'Connecting to device...' : 'Device is offline.'),
+            style: TextStyle(
+              color: widget.device.isOnline ? accentGreen : (widget.device.statusMessage == 'Connecting...' ? Colors.orangeAccent : textSecondaryColor),
+              fontSize: 13,
+              fontWeight: widget.device.isOnline || widget.device.statusMessage == 'Connecting...' ? FontWeight.w500 : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class CommandText extends StatefulWidget {
+  final String text;
+  final bool isUser;
+  final bool isDark;
+  final Color accentGreen;
+  final Color primaryTextColor;
+  final Function(String) onCommandTap;
+
+  const CommandText({
+    super.key,
+    required this.text,
+    required this.isUser,
+    required this.isDark,
+    required this.accentGreen,
+    required this.primaryTextColor,
+    required this.onCommandTap,
+  });
+
+  @override
+  State<CommandText> createState() => _CommandTextState();
+}
+
+class _CommandTextState extends State<CommandText> {
+  late List<TapGestureRecognizer> _recognizers;
+
+  @override
+  void initState() {
+    super.initState();
+    _recognizers = [];
+  }
+
+  @override
+  void dispose() {
+    for (final recognizer in _recognizers) {
+      recognizer.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Clear old recognizers if rebuilding
+    for (final recognizer in _recognizers) {
+      recognizer.dispose();
+    }
+    _recognizers.clear();
+
+    final RegExp commandRegex = RegExp(r'(/\w+)|(\b(?:On|Off)\b)');
+    final Iterable<RegExpMatch> matches = commandRegex.allMatches(widget.text);
+
+    if (matches.isEmpty) {
+      return Text(
+        widget.text,
+        style: TextStyle(
+          color: widget.isUser
+              ? (widget.isDark ? Colors.white : AppTheme.textPrimaryLight)
+              : widget.primaryTextColor,
+          fontSize: 14.5,
+          height: 1.3,
+          fontFamily: 'monospace',
+        ),
+      );
+    }
+
+    List<TextSpan> spans = [];
+    int lastMatchEnd = 0;
+    for (final match in matches) {
+      if (match.start > lastMatchEnd) {
+        spans.add(TextSpan(text: widget.text.substring(lastMatchEnd, match.start)));
+      }
+      
+      if (match.group(1) != null) {
+        final command = match.group(1)!;
+        final recognizer = TapGestureRecognizer()..onTap = () => widget.onCommandTap(command);
+        _recognizers.add(recognizer);
+
+        spans.add(
+          TextSpan(
+            text: command,
+            style: TextStyle(
+              color: widget.accentGreen,
+              fontWeight: FontWeight.w600,
+            ),
+            recognizer: recognizer,
+          ),
+        );
+      } else if (match.group(2) != null) {
+        final status = match.group(2)!;
+        final color = status == 'On' ? widget.accentGreen : const Color(0xFFF87171); // Red for Off
+        spans.add(
+          TextSpan(
+            text: status,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        );
+      }
+      
+      lastMatchEnd = match.end;
+    }
+    if (lastMatchEnd < widget.text.length) {
+      spans.add(TextSpan(text: widget.text.substring(lastMatchEnd)));
+    }
+
+    return RichText(
+      text: TextSpan(
+        style: TextStyle(
+          color: widget.isUser
+              ? (widget.isDark ? Colors.white : AppTheme.textPrimaryLight)
+              : widget.primaryTextColor,
+          fontSize: 14.5,
+          height: 1.3,
+          fontFamily: 'monospace', // To make device output align better like in the image
+        ),
+        children: spans,
+      ),
+    );
+  }
 }

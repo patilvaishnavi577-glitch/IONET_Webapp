@@ -25,13 +25,34 @@ class KnowledgeProvider extends ChangeNotifier {
 
   bool isFollowing(String id) => _followedChannelIds.contains(id);
 
-  void toggleFollow(String id) {
-    if (_followedChannelIds.contains(id)) {
+  Future<String?> toggleFollow(String id, String token) async {
+    final isCurrentlyFollowing = _followedChannelIds.contains(id);
+    
+    // Optimistic UI update
+    if (isCurrentlyFollowing) {
       _followedChannelIds.remove(id);
     } else {
       _followedChannelIds.add(id);
     }
     notifyListeners();
+
+    String? error;
+    if (isCurrentlyFollowing) {
+      error = await _apiService.unfollowChannel(token: token, channelId: id);
+    } else {
+      error = await _apiService.followChannel(token: token, channelId: id);
+    }
+
+    // Revert on failure
+    if (error != null) {
+      if (isCurrentlyFollowing) {
+        _followedChannelIds.add(id);
+      } else {
+        _followedChannelIds.remove(id);
+      }
+      notifyListeners();
+    }
+    return error;
   }
 
   void selectChannel(String? id) {
@@ -44,8 +65,20 @@ class KnowledgeProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    final rawChannels = await _apiService.getChannels(token);
+    final results = await Future.wait([
+      _apiService.getChannels(token),
+      _apiService.getSubscribedChannels(token),
+    ]);
+
+    final rawChannels = results[0] as List<Map<String, dynamic>>?;
+    final subscribedIds = results[1] as List<String>?;
+
     _isLoading = false;
+
+    if (subscribedIds != null) {
+      _followedChannelIds.clear();
+      _followedChannelIds.addAll(subscribedIds);
+    }
 
     if (rawChannels != null) {
       _channels.clear();
@@ -76,7 +109,6 @@ class KnowledgeProvider extends ChangeNotifier {
           Channel(
             id: channelId,
             name: channelName,
-            followers: 'Public Channel',
             description: 'Guides and community resources for $channelName setups.',
             resources: resources,
           ),

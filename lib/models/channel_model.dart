@@ -13,14 +13,12 @@ class ChannelResource {
 class Channel {
   final String id;
   final String name;
-  final String followers;
   final String description;
   final List<ChannelResource> resources;
 
   const Channel({
     required this.id,
     required this.name,
-    required this.followers,
     required this.description,
     required this.resources,
   });

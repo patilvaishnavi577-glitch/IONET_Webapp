@@ -49,16 +49,34 @@ class DeviceProvider extends ChangeNotifier {
   }
 
   void selectDevice(String? id) {
+    if (_selectedDeviceId == id) return;
+
     _selectedDeviceId = id;
-    if (id != null) {
-      final index = _devices.indexWhere((d) => d.id == id);
-      if (index != -1) {
-        _connectWebSocket(id, _devices[index].deviceId);
+    
+    final device = _devices.firstWhere((d) => d.id == id, orElse: () => Device(id: '', deviceId: '', name: '', statusMessage: '', lastActiveTime: ''));
+    if (device.id.isNotEmpty) {
+      // 1. Immediately set status to Connecting...
+      final idx = _devices.indexWhere((d) => d.id == device.id);
+      if (idx != -1) {
+        _devices[idx] = _devices[idx].copyWith(
+          isOnline: false,
+          statusMessage: 'Connecting...',
+          messages: [], // Clear chat history on new connection
+          quickCommands: const [QuickCommand(label: 'Info', message: 'Info')], // Reset available commands
+        );
       }
+      notifyListeners();
+
+      // 2. Add a brief artificial delay so the user clearly sees the 'Connecting...' state
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (_selectedDeviceId == id) { // Ensure user hasn't switched devices again
+          _connectWebSocket(device.id, device.deviceId);
+        }
+      });
     } else {
       _disconnectWebSocket();
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   void setSearchQuery(String query) {
@@ -127,8 +145,8 @@ class DeviceProvider extends ChangeNotifier {
   }
 
   /// Fetch details of a single device by database internal ID and update it in local state
-  Future<bool> fetchDeviceDetails({required String token, required String dbId}) async {
-    final rawDevice = await _apiService.getDeviceById(token: token, deviceId: dbId);
+  Future<bool> fetchDeviceDetails({required String token, required String dbId, required String hwId}) async {
+    final rawDevice = await _apiService.getDeviceById(token: token, deviceId: hwId);
     if (rawDevice != null) {
       final index = _devices.indexWhere((d) => d.id == dbId);
       final deviceName = rawDevice['deviceName']?.toString() ?? rawDevice['name']?.toString() ?? 'Device';
@@ -154,6 +172,9 @@ class DeviceProvider extends ChangeNotifier {
         for (final u in sharedUsersRaw) {
           if (u is Map) {
             sharedUsers.add(SharedUser.fromJson(Map<String, dynamic>.from(u)));
+          } else if (u is String) {
+            // Fallback for unpopulated object IDs
+            sharedUsers.add(SharedUser(id: u, name: 'Unknown User', email: u));
           }
         }
       }
@@ -216,8 +237,8 @@ class DeviceProvider extends ChangeNotifier {
     final isShared = device.isShared;
 
     final success = isShared
-        ? await _apiService.unshareDeviceBySharedUser(token: token, deviceId: device.id)
-        : await _apiService.deleteDevice(token: token, deviceId: device.id);
+        ? await _apiService.unshareDeviceBySharedUser(token: token, deviceId: device.deviceId)
+        : await _apiService.deleteDevice(token: token, deviceId: device.deviceId);
     _setLoading(false);
 
     if (success) {
@@ -261,20 +282,20 @@ class DeviceProvider extends ChangeNotifier {
   }
 
   /// Share a device via backend API
-  Future<bool> shareDevice({
+  Future<String?> shareDevice({
     required String token,
     required String dbId,
     required String hwId,
     required String targetUserId,
   }) async {
     _setLoading(true);
-    final success = await _apiService.shareDevice(
+    final error = await _apiService.shareDevice(
       token: token,
-      deviceId: dbId,
+      deviceId: hwId,
       targetUserId: targetUserId,
     );
     _setLoading(false);
-    return success;
+    return error;
   }
 
   /// Unshare a device via backend API
@@ -287,7 +308,7 @@ class DeviceProvider extends ChangeNotifier {
     _setLoading(true);
     final success = await _apiService.unshareDevice(
       token: token,
-      deviceId: dbId,
+      deviceId: hwId,
       targetUserId: targetUserId,
     );
     _setLoading(false);
@@ -305,12 +326,12 @@ class DeviceProvider extends ChangeNotifier {
     _setLoading(true);
     final success = await _apiService.uploadDeviceImage(
       token: token,
-      deviceId: dbId,
+      deviceId: hwId,
       fileBytes: bytes,
       filename: filename,
     );
     if (success) {
-      await fetchDeviceDetails(token: token, dbId: dbId);
+      await fetchDeviceDetails(token: token, dbId: dbId, hwId: hwId);
     }
     _setLoading(false);
     return success;
@@ -325,10 +346,10 @@ class DeviceProvider extends ChangeNotifier {
     _setLoading(true);
     final success = await _apiService.deleteDeviceImage(
       token: token,
-      deviceId: dbId,
+      deviceId: hwId,
     );
     if (success) {
-      await fetchDeviceDetails(token: token, dbId: dbId);
+      await fetchDeviceDetails(token: token, dbId: dbId, hwId: hwId);
     }
     _setLoading(false);
     return success;
@@ -500,16 +521,6 @@ class DeviceProvider extends ChangeNotifier {
   void _connectWebSocket(String dbId, String hwId) {
     _disconnectWebSocket();
 
-    // 1. Initialize status as Offline while connecting/checking
-    final idx = _devices.indexWhere((d) => d.id == dbId);
-    if (idx != -1) {
-      _devices[idx] = _devices[idx].copyWith(
-        isOnline: false,
-        statusMessage: 'Offline',
-      );
-      notifyListeners();
-    }
-
     // Connect watchdog timer: if no message arrives in 10 seconds, it remains offline
     _resetWatchdog(dbId);
 
@@ -534,21 +545,30 @@ class DeviceProvider extends ChangeNotifier {
           try {
             final parsed = jsonDecode(message.toString());
             if (parsed is Map) {
+              if (parsed.containsKey('success') && parsed['success'] == false) {
+                _setDeviceOnline(dbId, false);
+                _watchdogTimer?.cancel();
+                return;
+              }
+
               final type = parsed['type']?.toString();
               if (type == 'connected') {
-                // Server handshake confirmed. Set online and execute initial status query immediately.
+                // Server handshake confirmed. The websocket is open.
+                // Do NOT set device online yet. Wait for 'device_online', heartbeat, or actual data.
                 _resetWatchdog(dbId);
-                _setDeviceOnline(dbId, true);
                 return;
               }
               
-              _resetWatchdog(dbId);
-              _setDeviceOnline(dbId, true);
-
               if (type == 'device_offline' && parsed['deviceId']?.toString() == hwId) {
                 _setDeviceOnline(dbId, false);
                 _watchdogTimer?.cancel();
-              } else if (type == 'heartbeat') {
+                return;
+              }
+
+              _resetWatchdog(dbId);
+              _setDeviceOnline(dbId, true);
+
+              if (type == 'heartbeat') {
                 // Heartbeat message resets watchdog and keeps device online
               } else {
                 _addDeviceReplyMessage(dbId, message.toString());
@@ -612,21 +632,34 @@ class DeviceProvider extends ChangeNotifier {
     final idx = _devices.indexWhere((d) => d.id == dbId);
     if (idx != -1) {
       final device = _devices[idx];
-      if (device.isOnline != online) {
-        final newLastActive = online ? device.lastActiveTime : _getCurrentFormattedTimeIst();
+      final expectedStatus = online ? 'Online' : 'Offline';
+      if (device.isOnline != online || device.statusMessage != expectedStatus) {
+        String newLastActive = device.lastActiveTime;
+        if (!online && device.isOnline) {
+          // Only update the offline time when transitioning from online -> offline
+          newLastActive = _getCurrentFormattedTimeIst();
+        }
+        
         _devices[idx] = device.copyWith(
           isOnline: online,
-          statusMessage: online ? 'Online' : 'Offline',
+          statusMessage: expectedStatus,
           lastActiveTime: newLastActive,
         );
         notifyListeners();
-
-        // Fetch relay status silently when device transitions to Online
-        if (online) {
-          _sendInitialStatus(dbId);
-        }
+        // User requested not to send /status automatically when device goes online
       }
     }
+  }
+
+  String _cleanKey(String rawKey) {
+    String key = rawKey;
+    final statusRegex = RegExp(r'[_]status$', caseSensitive: false);
+    key = key.replaceAll(statusRegex, '');
+    key = key.replaceAll('_', ' ').trim();
+    return key.split(' ').map((word) {
+      if (word.isEmpty) return '';
+      return word[0].toUpperCase() + word.substring(1);
+    }).join(' ');
   }
 
   void _addDeviceReplyMessage(String dbId, String rawText) {
@@ -643,29 +676,56 @@ class DeviceProvider extends ChangeNotifier {
     try {
       final parsed = jsonDecode(rawText);
       if (parsed is Map) {
-        // 1. Dynamically format any relay statuses present (e.g. Relay_1_Status, Relay_2_Status, etc.)
-        final relayKeys = parsed.keys
-            .map((k) => k.toString())
-            .where((k) => RegExp(r'^Relay_\d+_Status$', caseSensitive: false).hasMatch(k))
-            .toList();
-
-        if (relayKeys.isNotEmpty) {
-          // Sort keys numerically by the digit in the key
-          relayKeys.sort((a, b) {
-            final numA = int.tryParse(RegExp(r'\d+').firstMatch(a)?.group(0) ?? '') ?? 0;
-            final numB = int.tryParse(RegExp(r'\d+').firstMatch(b)?.group(0) ?? '') ?? 0;
-            return numA.compareTo(numB);
-          });
-
-          final List<String> statusParts = [];
-          for (final key in relayKeys) {
-            final val = parsed[key]?.toString() ?? 'Off';
-            final numStr = RegExp(r'\d+').firstMatch(key)?.group(0) ?? '';
-            statusParts.add('Relay $numStr: $val');
-          }
-          textToShow = statusParts.join(' | ');
+        // 1. Locate the status payload map (use 'data' map if nested, fallback to root)
+        Map? dataMap;
+        bool isNested = false;
+        if (parsed.containsKey('data') && parsed['data'] is Map) {
+          dataMap = parsed['data'];
+          isNested = true;
         } else {
-          // If it is handshake or pure commands list payload without relay status, do not add message bubble
+          dataMap = parsed;
+        }
+
+        final configKeys = {'deviceid', 'firmwareversion', 'availablecommands', 'type', 'success', 'message'};
+        final List<String> lines = [];
+        
+        lines.add('Device Id : ${device.deviceId}');
+        final firmware = parsed['firmwareVersion']?.toString() ?? dataMap?['firmwareVersion']?.toString() ?? parsed['firmware']?.toString() ?? dataMap?['firmware']?.toString();
+        if (firmware != null && firmware.isNotEmpty) {
+          lines.add('Firmware: $firmware');
+        }
+        
+        if (dataMap != null) {
+          final keys = dataMap.keys.map((k) => k.toString()).toList();
+          final filteredKeys = keys.where((k) {
+            if (!isNested) {
+              return !configKeys.contains(k.toLowerCase());
+            }
+            return true;
+          }).toList();
+
+          if (filteredKeys.isNotEmpty) {
+            // Sort keys numerically if numbers are present, otherwise alphabetically
+            filteredKeys.sort((a, b) {
+              final numA = int.tryParse(RegExp(r'\d+').firstMatch(a)?.group(0) ?? '') ?? -1;
+              final numB = int.tryParse(RegExp(r'\d+').firstMatch(b)?.group(0) ?? '') ?? -1;
+              if (numA != -1 && numB != -1) {
+                return numA.compareTo(numB);
+              }
+              return a.toLowerCase().compareTo(b.toLowerCase());
+            });
+
+            for (final key in filteredKeys) {
+              final val = dataMap[key]?.toString() ?? 'Off';
+              final label = _cleanKey(key);
+              lines.add('$label: $val');
+            }
+            textToShow = lines.join('\n');
+          }
+        }
+
+        // If there is no relay status/data payload block, check if it's connected or offline handshake message
+        if (textToShow == null || textToShow.isEmpty) {
           final type = parsed['type']?.toString();
           if (type == 'connected' || type == 'device_online' || parsed.containsKey('availableCommands')) {
             shouldAddMessage = false;
@@ -674,21 +734,49 @@ class DeviceProvider extends ChangeNotifier {
         
         // 2. Dynamically extract quick action commands to show at bottom input bar
         if (parsed.containsKey('availableCommands')) {
-          final commandsMap = parsed['availableCommands'];
-          if (commandsMap is Map) {
-            final parsedCommands = <QuickCommand>[];
-            commandsMap.forEach((key, val) {
-              final cmdKey = key.toString();
-              if (cmdKey.startsWith('/')) {
-                final rawLabel = cmdKey.substring(1).replaceAll('_', ' ');
-                final label = rawLabel.isNotEmpty
-                    ? rawLabel[0].toUpperCase() + rawLabel.substring(1)
-                    : rawLabel;
-                parsedCommands.add(QuickCommand(label: label, message: cmdKey));
+          final cmds = parsed['availableCommands'];
+          final parsedCommands = <QuickCommand>[];
+          final commandDisplayLines = <Map<String, String>>[];
+
+          void _processCmd(String cmdKey, String cmdDesc) {
+            if (cmdKey.startsWith('/')) {
+              commandDisplayLines.add({'cmd': cmdKey, 'desc': cmdDesc});
+              String rawLabel = cmdKey.substring(1).replaceAll('_', ' ');
+              rawLabel = rawLabel.replaceAllMapped(RegExp(r'([a-zA-Z])(\d)'), (m) => '${m[1]} ${m[2]}');
+              final label = rawLabel.isNotEmpty
+                  ? rawLabel[0].toUpperCase() + rawLabel.substring(1)
+                  : rawLabel;
+              parsedCommands.add(QuickCommand(label: label, message: cmdKey));
+            }
+          }
+
+          if (cmds is List) {
+            for (final item in cmds) {
+              if (item is Map) {
+                _processCmd(item['command']?.toString() ?? '', item['description']?.toString() ?? '');
               }
+            }
+          } else if (cmds is Map) {
+            cmds.forEach((key, val) {
+              _processCmd(key.toString(), val?.toString() ?? '');
             });
-            if (parsedCommands.isNotEmpty) {
-              updatedCommands = parsedCommands;
+          }
+
+          if (parsedCommands.isNotEmpty) {
+            updatedCommands = parsedCommands;
+            
+            if (lines.isNotEmpty) {
+              lines.add(''); // Blank line before commands
+              int maxLen = 0;
+              for (var c in commandDisplayLines) {
+                if (c['cmd']!.length > maxLen) maxLen = c['cmd']!.length;
+              }
+              for (var c in commandDisplayLines) {
+                final paddedCmd = c['cmd']!.padRight(maxLen);
+                final desc = c['desc']!.isNotEmpty ? ' : ${c['desc']}' : '';
+                lines.add('$paddedCmd$desc');
+              }
+              textToShow = lines.join('\n');
             }
           }
         }

@@ -203,6 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
             device: selectedDevice,
             isMobile: true,
             onBack: () {
+              context.read<DeviceProvider>().selectDevice(null);
               setState(() {
                 _showMobileChat = false;
               });
@@ -647,7 +648,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               });
                             }
                           },
-                          onDoubleTap: () => _showDeleteDeviceDialog(context, deviceProvider, device, isDark),
                         );
                       },
                     ),
@@ -668,41 +668,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showDeleteDeviceDialog(BuildContext context, DeviceProvider deviceProvider, Device device, bool isDark) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF1D222B) : Colors.white,
-        title: Text('Delete Device', style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
-        content: Text(
-          'Are you sure you want to delete ${device.name}?',
-          style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFF10B981))),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(dialogContext).pop();
-              final token = context.read<UserSessionProvider>().session.token;
-              if (token != null) {
-                await deviceProvider.deleteDevice(
-                  token: token,
-                  deviceId: device.id,
-                );
-                setState(() {
-                  _showMobileChat = false;
-                });
-              }
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildFarLeftNavIcon({
     required int index,
