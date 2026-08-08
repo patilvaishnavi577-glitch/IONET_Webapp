@@ -6,6 +6,7 @@ import '../providers/theme_provider.dart';
 import '../providers/user_session_provider.dart';
 import '../services/api_service.dart';
 import 'package:file_picker/file_picker.dart';
+import '../utils/toast_service.dart';
 
 class DeviceProfileView extends StatefulWidget {
   final Device device;
@@ -64,7 +65,7 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                  Text(
-                   'Search user by email:',
+                   'Search user by Email or Phone number:',
                    style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 13),
                  ),
                  const SizedBox(height: 8),
@@ -93,10 +94,7 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                      final results = await ApiService().searchUsers(token: token, query: query);
                      if (!stateContext.mounted) return;
 
-                     final filtered = (results ?? []).where((u) {
-                       final email = u['email']?.toString().toLowerCase() ?? '';
-                       return email == query.toLowerCase();
-                     }).toList();
+                     final filtered = results ?? [];
 
                      setDialogState(() {
                        searchResults = filtered;
@@ -120,10 +118,7 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                      final token = context.read<UserSessionProvider>().session.token;
                      final results = await ApiService().searchUsers(token: token!, query: query);
                      
-                     final filtered = (results ?? []).where((u) {
-                       final email = u['email']?.toString().toLowerCase() ?? '';
-                       return email == query.toLowerCase();
-                     }).toList();
+                     final filtered = results ?? [];
 
                      setDialogState(() {
                        isSearching = false;
@@ -140,7 +135,7 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                      });
                    },
                    decoration: InputDecoration(
-                     hintText: 'Enter user email...',
+                     hintText: 'Enter full email or phone...',
                      suffixIcon: isSearching
                          ? const SizedBox(
                              width: 20,
@@ -161,10 +156,7 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                                final token = context.read<UserSessionProvider>().session.token;
                                final results = await ApiService().searchUsers(token: token!, query: query);
 
-                               final filtered = (results ?? []).where((u) {
-                                 final email = u['email']?.toString().toLowerCase() ?? '';
-                                 return email == query.toLowerCase();
-                               }).toList();
+                               final filtered = results ?? [];
 
                                setDialogState(() {
                                  isSearching = false;
@@ -199,12 +191,14 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                         final user = searchResults[idx];
                         final name = user['name'] ?? 'User';
                         final email = user['email'] ?? '';
+                        final phone = user['phoneNumber'] ?? user['mobileNumber'] ?? user['phone'] ?? '';
+                        final subtitleText = [email, phone].where((s) => s.toString().isNotEmpty).join(' • ');
                         final id = user['id'] ?? user['_id'] ?? '';
                         return Material(
                           color: Colors.transparent,
                           child: ListTile(
                             title: Text(name, style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 13)),
-                            subtitle: Text(email, style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 11)),
+                            subtitle: Text(subtitleText, style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 11)),
                             trailing: selectedUserId == id
                                 ? Icon(Icons.check, color: isDark ? const Color(0xFF00A884) : const Color(0xFF008069))
                                 : null,
@@ -264,16 +258,13 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
               onPressed: () async {
                 final token = context.read<UserSessionProvider>().session.token;
                 final deviceProvider = context.read<DeviceProvider>();
-                final messenger = ScaffoldMessenger.of(context);
 
                 String targetUserId = selectedUserId;
 
                 if (targetUserId.isEmpty) {
                   final query = searchController.text.trim();
                   if (query.isEmpty) {
-                    messenger.showSnackBar(
-                      const SnackBar(content: Text('Please select a user to share with.'), backgroundColor: Colors.orangeAccent),
-                    );
+                    ToastService.show(context, 'Please select a user to share with.', isError: true);
                     return;
                   }
 
@@ -287,9 +278,7 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                   });
 
                   if (results == null || results.isEmpty) {
-                    messenger.showSnackBar(
-                      SnackBar(content: Text('No user found matching "$query".'), backgroundColor: Colors.orangeAccent),
-                    );
+                    ToastService.show(context, 'No user found matching "$query".', isError: true);
                     return;
                   }
 
@@ -302,12 +291,7 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                     setDialogState(() {
                       searchResults = results;
                     });
-                    messenger.showSnackBar(
-                      const SnackBar(
-                        content: Text('Multiple matches found. Please tap the correct user below.'),
-                        backgroundColor: Colors.blueAccent,
-                      ),
-                    );
+                    ToastService.show(context, 'Multiple matches found. Please tap the correct user below.', isError: true);
                     return;
                   }
                 }
@@ -329,10 +313,10 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
 
                 if (mounted) {
                   String messageText = 'Device shared successfully!';
-                  Color snackColor = Colors.green;
+                  bool isError = false;
                   
                   if (error != null) {
-                    snackColor = Colors.redAccent;
+                    isError = true;
                     // Custom validation/exception handling for share limits
                     if (error.toLowerCase().contains('limit')) {
                       messageText = 'Share limit exceeded! You cannot share this device with more users.';
@@ -341,12 +325,7 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                     }
                   }
                   
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text(messageText),
-                      backgroundColor: snackColor,
-                    ),
-                  );
+                  ToastService.show(context, messageText, isError: isError);
                 }
               },
               child: const Text('Share'),
@@ -392,15 +371,11 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
     
     if (success) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User removed successfully.'), backgroundColor: Colors.green),
-      );
+      ToastService.show(context, 'User removed successfully.');
       _fetchDetails();
     } else {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to remove user.'), backgroundColor: Colors.redAccent),
-      );
+      ToastService.show(context, 'Failed to remove user.', isError: true);
     }
   }
 
@@ -445,9 +420,7 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
       }
     } else {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to leave device.'), backgroundColor: Colors.redAccent),
-      );
+      ToastService.show(context, 'Failed to leave device.', isError: true);
     }
   }
 
@@ -492,9 +465,7 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
       }
     } else {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to delete device.'), backgroundColor: Colors.redAccent),
-      );
+      ToastService.show(context, 'Failed to delete device.', isError: true);
     }
   }
 
@@ -526,7 +497,6 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                 return;
               }
               final token = context.read<UserSessionProvider>().session.token;
-              final messenger = ScaffoldMessenger.of(context);
               if (token == null) return;
               
               Navigator.of(dialogCtx).pop();
@@ -537,12 +507,7 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
               );
               
               if (mounted) {
-                messenger.showSnackBar(
-                  SnackBar(
-                    content: Text(success ? 'Device renamed successfully!' : 'Failed to rename device.'),
-                    backgroundColor: success ? Colors.green : Colors.redAccent,
-                  ),
-                );
+                ToastService.show(context, success ? 'Device renamed successfully!' : 'Failed to rename device.', isError: !success);
               }
             },
             child: const Text('Save'),
@@ -569,7 +534,6 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
     final isOwner = !device.isShared;
 
     Future<void> _pickAndUploadDeviceImage(BuildContext context) async {
-      final messenger = ScaffoldMessenger.of(context);
       final userSession = context.read<UserSessionProvider>();
       final deviceProv = context.read<DeviceProvider>();
 
@@ -585,16 +549,12 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
         final bytes = file.bytes;
 
         if (bytes == null) {
-          messenger.showSnackBar(
-            const SnackBar(content: Text('Failed to read file data.'), backgroundColor: Colors.redAccent),
-          );
+          ToastService.show(context, 'Failed to read file data.', isError: true);
           return;
         }
 
         if (bytes.length > 5 * 1024 * 1024) {
-          messenger.showSnackBar(
-            const SnackBar(content: Text('Image size must be less than 5MB.'), backgroundColor: Colors.orangeAccent),
-          );
+          ToastService.show(context, 'Image size must be less than 5MB.', isError: true);
           return;
         }
 
@@ -608,17 +568,10 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
             );
 
         if (!mounted) return;
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(success ? 'Device picture updated successfully!' : 'Failed to upload device picture.'),
-            backgroundColor: success ? Colors.green : Colors.redAccent,
-          ),
-        );
+        ToastService.show(context, success ? 'Device picture updated successfully!' : 'Failed to upload device picture.', isError: !success);
         if (success) _fetchDetails();
       } catch (_) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('Error selecting or uploading image.'), backgroundColor: Colors.redAccent),
-        );
+        ToastService.show(context, 'Error selecting or uploading image.', isError: true);
       }
     }
 
@@ -645,7 +598,6 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
 
       if (confirmed != true) return;
 
-      final messenger = ScaffoldMessenger.of(context);
       final userSession = context.read<UserSessionProvider>();
       final deviceProv = context.read<DeviceProvider>();
 
@@ -657,12 +609,7 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
           );
 
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(success ? 'Device picture removed successfully!' : 'Failed to remove device picture.'),
-          backgroundColor: success ? Colors.green : Colors.redAccent,
-        ),
-      );
+      ToastService.show(context, success ? 'Device photo removed successfully!' : 'Failed to remove device photo.', isError: !success);
       if (success) _fetchDetails();
     }
 
@@ -871,7 +818,7 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                         _buildDetailRow(
                           icon: Icons.security,
                           title: 'Access Level',
-                          value: isOwner ? 'OWNER' : 'SHARED',
+                          value: isOwner ? 'OWNED' : 'SHARED',
                           iconColor: accentGreen,
                           textColor: textPri,
                         ),

@@ -375,12 +375,12 @@ class _DeviceChatViewState extends State<DeviceChatView> {
     final messages = widget.device.messages;
     final isDark = context.watch<ThemeProvider>().isDarkMode;
 
-    final headerBg = isDark ? const Color(0xFF111B21) : const Color(0xFFF0F2F5);
+    final headerBg = isDark ? AppTheme.cardBg : const Color(0xFFF0F2F5);
     final borderCol = isDark ? AppTheme.cardBorder : AppTheme.cardBorderLight;
     final textPrimaryColor = isDark ? AppTheme.textPrimary : AppTheme.textPrimaryLight;
     final textSecondaryColor = isDark ? AppTheme.textSecondary : AppTheme.textSecondaryLight;
-    final chatBg = isDark ? const Color(0xFF0B141A) : const Color(0xFFEFEAE2);
-    final inputBarBg = isDark ? const Color(0xFF1F2C34) : const Color(0xFFF0F2F5);
+    final chatBg = isDark ? AppTheme.scaffoldBg : const Color(0xFFEFEAE2);
+    final inputBarBg = isDark ? AppTheme.cardBg : const Color(0xFFF0F2F5);
     final textInputFill = isDark ? const Color(0xFF2A3942) : Colors.white;
     final accentGreen = isDark ? const Color(0xFF00A884) : const Color(0xFF008069);
 
@@ -613,7 +613,7 @@ class _DeviceChatViewState extends State<DeviceChatView> {
     final secondaryTextColor = isDark ? AppTheme.textSecondary : AppTheme.textSecondaryLight;
 
     final userBubbleColor = isDark ? const Color(0xFF005C4B) : const Color(0xFFD9FDD3);
-    final deviceBubbleColor = isDark ? const Color(0xFF202C33) : Colors.white;
+    final deviceBubbleColor = isDark ? AppTheme.cardBg : Colors.white;
 
     final bubbleContent = CommandText(
       text: msg.text,
@@ -693,7 +693,7 @@ class _DeviceChatViewState extends State<DeviceChatView> {
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: isDark ? const Color(0xFF111B21) : const Color(0xFF54656F),
+                color: isDark ? AppTheme.scaffoldBg : const Color(0xFF54656F),
               ),
             ),
           ),

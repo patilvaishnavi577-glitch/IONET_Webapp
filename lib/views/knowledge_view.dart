@@ -6,6 +6,7 @@ import '../providers/knowledge_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/user_session_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/toast_service.dart';
 import 'channel_feed_view.dart';
 
 class KnowledgeView extends StatefulWidget {
@@ -49,23 +50,15 @@ class _KnowledgeViewState extends State<KnowledgeView> {
       child: Column(
         children: [
           // Header Bar
-          Container(
-            height: 64,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF111B21) : Colors.white,
-              border: Border(
-                bottom: BorderSide(color: borderCol, width: 1),
-              ),
-            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   'Support',
                   style: TextStyle(
-                    color: textPrimaryColor,
-                    fontSize: 20,
+                    color: isDark ? const Color(0xFFE9EDEF) : const Color(0xFF111B21),
+                    fontSize: 26,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -111,7 +104,7 @@ class _KnowledgeViewState extends State<KnowledgeView> {
                             if (error.toLowerCase().contains('limit')) {
                               messageText = 'Follow limit exceeded! You cannot follow more channels.';
                             }
-                            messenger.showSnackBar(SnackBar(content: Text(messageText), backgroundColor: Colors.redAccent));
+                            ToastService.show(context, messageText, isError: true);
                           }
                         },
                       );
@@ -150,7 +143,7 @@ class _KnowledgeViewState extends State<KnowledgeView> {
                             if (error.toLowerCase().contains('limit')) {
                               messageText = 'Follow limit exceeded! You cannot follow more channels.';
                             }
-                            messenger.showSnackBar(SnackBar(content: Text(messageText), backgroundColor: Colors.redAccent));
+                            ToastService.show(context, messageText, isError: true);
                           }
                         },
                       );

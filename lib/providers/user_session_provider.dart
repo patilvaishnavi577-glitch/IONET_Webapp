@@ -31,8 +31,9 @@ class UserSessionProvider extends ChangeNotifier {
 
   Future<void> _fetchProfileAndHydrate(String token) async {
     _setLoading(true);
-    final profile = await _apiService.getUserMe(token);
-    if (profile != null) {
+    try {
+      final profile = await _apiService.getUserMe(token);
+      if (profile != null) {
       final id = profile['id']?.toString() ?? profile['_id']?.toString();
       final name = profile['name']?.toString() ?? '';
       final phone = profile['phoneNumber']?.toString() ?? '';
@@ -48,6 +49,12 @@ class UserSessionProvider extends ChangeNotifier {
       );
     } else {
       // If profile fetch fails (e.g. token expired), we should probably clear it
+      logout();
+    }
+    } catch (e, s) {
+      if (_prefs != null) {
+        _prefs!.setString('crash_log', 'fetchProfileAndHydrate: $e\n$s');
+      }
       logout();
     }
     _setLoading(false);

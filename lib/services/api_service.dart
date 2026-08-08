@@ -18,22 +18,12 @@ class ApiService {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email}),
       );
-      // ignore: avoid_print
-      print('=== REQUEST OTP DEBUG ===');
-      // ignore: avoid_print
-      print('URL: $url');
-      // ignore: avoid_print
-      print('STATUS CODE: ${response.statusCode}');
-      // ignore: avoid_print
-      print('RESPONSE BODY: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return true;
       }
       return false;
     } catch (e) {
-      // ignore: avoid_print
-      print('REQUEST OTP ERROR: $e');
       return false;
     }
   }
@@ -51,14 +41,6 @@ class ApiService {
           'otp': code,
         }),
       );
-      // ignore: avoid_print
-      print('=== VERIFY OTP DEBUG ===');
-      // ignore: avoid_print
-      print('URL: $url');
-      // ignore: avoid_print
-      print('STATUS CODE: ${response.statusCode}');
-      // ignore: avoid_print
-      print('RESPONSE BODY: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final body = jsonDecode(response.body);
@@ -68,8 +50,6 @@ class ApiService {
       }
       return null;
     } catch (e) {
-      // ignore: avoid_print
-      print('VERIFY OTP ERROR: $e');
       return null;
     }
   }
@@ -86,14 +66,6 @@ class ApiService {
           'Content-Type': 'application/json',
         },
       );
-      // ignore: avoid_print
-      print('=== GET USER ME DEBUG ===');
-      // ignore: avoid_print
-      print('URL: $url');
-      // ignore: avoid_print
-      print('STATUS CODE: ${response.statusCode}');
-      // ignore: avoid_print
-      print('RESPONSE BODY: ${response.body}');
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
@@ -106,8 +78,6 @@ class ApiService {
       }
       return null;
     } catch (e) {
-      // ignore: avoid_print
-      print('GET USER ME ERROR: $e');
       return null;
     }
   }
@@ -132,22 +102,12 @@ class ApiService {
           'phoneNumber': phoneNumber,
         }),
       );
-      // ignore: avoid_print
-      print('=== CREATE PROFILE DEBUG ===');
-      // ignore: avoid_print
-      print('URL: $url');
-      // ignore: avoid_print
-      print('STATUS CODE: ${response.statusCode}');
-      // ignore: avoid_print
-      print('RESPONSE BODY: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return true;
       }
       return false;
     } catch (e) {
-      // ignore: avoid_print
-      print('CREATE PROFILE ERROR: $e');
       return false;
     }
   }
@@ -195,14 +155,6 @@ class ApiService {
           'Content-Type': 'application/json',
         },
       );
-      // ignore: avoid_print
-      print('=== GET DEVICE BY ID DEBUG ===');
-      // ignore: avoid_print
-      print('URL: $url');
-      // ignore: avoid_print
-      print('STATUS CODE: ${response.statusCode}');
-      // ignore: avoid_print
-      print('RESPONSE BODY: ${response.body}');
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
@@ -212,8 +164,6 @@ class ApiService {
       }
       return null;
     } catch (e) {
-      // ignore: avoid_print
-      print('GET DEVICE BY ID ERROR: $e');
       return null;
     }
   }
@@ -478,12 +428,6 @@ class ApiService {
         );
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      // ignore: avoid_print
-      print('=== UPLOAD PROFILE AVATAR DEBUG ===');
-      // ignore: avoid_print
-      print('STATUS CODE: ${response.statusCode}');
-      // ignore: avoid_print
-      print('RESPONSE BODY: ${response.body}');
       
       if (response.statusCode == 200 || response.statusCode == 201) {
         final body = jsonDecode(response.body);
@@ -495,8 +439,6 @@ class ApiService {
       }
       return null;
     } catch (e) {
-      // ignore: avoid_print
-      print('UPLOAD ERROR: $e');
       return null;
     }
   }
@@ -513,12 +455,6 @@ class ApiService {
           'Content-Type': 'application/json',
         },
       );
-      // ignore: avoid_print
-      print('=== DELETE PROFILE AVATAR DEBUG ===');
-      // ignore: avoid_print
-      print('STATUS CODE: ${response.statusCode}');
-      // ignore: avoid_print
-      print('RESPONSE BODY: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         final body = jsonDecode(response.body);
@@ -528,8 +464,6 @@ class ApiService {
       }
       return false;
     } catch (e) {
-      // ignore: avoid_print
-      print('DELETE AVATAR ERROR: $e');
       return false;
     }
   }
@@ -556,12 +490,8 @@ class ApiService {
         );
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      print('=== UPLOAD DEVICE AVATAR DEBUG ===');
-      print('STATUS CODE: ${response.statusCode}');
-      print('RESPONSE BODY: ${response.body}');
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
-      print('UPLOAD DEVICE AVATAR ERROR: $e');
       return false;
     }
   }
@@ -581,12 +511,8 @@ class ApiService {
           'Content-Type': 'application/json',
         },
       );
-      print('=== DELETE DEVICE AVATAR DEBUG ===');
-      print('STATUS CODE: ${response.statusCode}');
-      print('RESPONSE BODY: ${response.body}');
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
-      print('DELETE DEVICE AVATAR ERROR: $e');
       return false;
     }
   }
@@ -608,12 +534,6 @@ class ApiService {
         },
         body: jsonEncode({'userId': targetUserId}),
       );
-      // ignore: avoid_print
-      print('=== SHARE DEVICE DEBUG ===');
-      // ignore: avoid_print
-      print('STATUS CODE: ${response.statusCode}');
-      // ignore: avoid_print
-      print('RESPONSE BODY: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final body = jsonDecode(response.body);
@@ -634,8 +554,6 @@ class ApiService {
 
       return response.body.isNotEmpty ? response.body : 'Failed to share device. Server returned ${response.statusCode}.';
     } catch (e) {
-      // ignore: avoid_print
-      print('SHARE DEVICE ERROR: $e');
       return 'An error occurred while connecting to the server.';
     }
   }
@@ -677,14 +595,6 @@ class ApiService {
           'Content-Type': 'application/json',
         },
       );
-      // ignore: avoid_print
-      print('=== SEARCH USERS DEBUG ===');
-      // ignore: avoid_print
-      print('URL: $url');
-      // ignore: avoid_print
-      print('STATUS CODE: ${response.statusCode}');
-      // ignore: avoid_print
-      print('RESPONSE BODY: ${response.body}');
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
@@ -700,8 +610,6 @@ class ApiService {
       }
       return null;
     } catch (e) {
-      // ignore: avoid_print
-      print('SEARCH USERS ERROR: $e');
       return null;
     }
   }
@@ -961,7 +869,6 @@ class ApiService {
       } catch (_) {}
       return response.body.isNotEmpty ? response.body : 'Failed to follow. Server returned ${response.statusCode}';
     } catch (e) {
-      print('FOLLOW CHANNEL ERROR: $e');
       return 'An error occurred while following the channel.';
     }
   }
@@ -992,7 +899,6 @@ class ApiService {
       } catch (_) {}
       return response.body.isNotEmpty ? response.body : 'Failed to unfollow. Server returned ${response.statusCode}';
     } catch (e) {
-      print('UNFOLLOW CHANNEL ERROR: $e');
       return 'An error occurred while unfollowing the channel.';
     }
   }

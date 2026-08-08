@@ -47,13 +47,13 @@ class ChannelFeedView extends StatelessWidget {
     final knowledgeProvider = context.watch<KnowledgeProvider>();
     final isFollowing = knowledgeProvider.isFollowing(channel.id);
 
-    final headerBg = isDark ? const Color(0xFF111B21) : const Color(0xFFF0F2F5);
+    final headerBg = isDark ? AppTheme.cardBg : const Color(0xFFF0F2F5);
     final borderCol = isDark ? AppTheme.cardBorder : AppTheme.cardBorderLight;
     final textPrimaryColor = isDark ? AppTheme.textPrimary : AppTheme.textPrimaryLight;
     final textSecondaryColor = isDark ? AppTheme.textSecondary : AppTheme.textSecondaryLight;
-    final chatBg = isDark ? const Color(0xFF0B141A) : const Color(0xFFEFEAE2);
+    final chatBg = isDark ? AppTheme.scaffoldBg : const Color(0xFFEFEAE2);
     final accentGreen = isDark ? const Color(0xFF00A884) : const Color(0xFF008069);
-    final cardBg = isDark ? const Color(0xFF1E2630) : Colors.white;
+    final cardBg = isDark ? AppTheme.cardBg : Colors.white;
     final bubbleColor = isDark ? const Color(0xFF202C33) : Colors.white;
 
     return Column(

@@ -3,9 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // WhatsApp Web Dark Theme Palette
-  static const Color scaffoldBg = Color(0xFF0B141A);
-  static const Color cardBg = Color(0xFF111B21);
-  static const Color inputBg = Color(0xFF202C33);
+  static const Color scaffoldBg = Color(0xFF111B21);
+  static const Color cardBg = Color(0xFF202C33);
+  static const Color inputBg = Color(0xFF2A3942);
   static const Color cardBorder = Color(0xFF222D34);
   static const Color focusedBorder = Color(0xFF00A884); // WhatsApp Green
   static const Color buttonBg = Color(0xFF202C33);
@@ -17,7 +17,7 @@ class AppTheme {
   static const Color textMuted = Color(0xFF667781);
 
   // WhatsApp Web Light Theme Palette
-  static const Color scaffoldBgLight = Color(0xFFF0F2F5); // WhatsApp Light Grey
+  static const Color scaffoldBgLight = Color(0xFFFFFFFF); // White
   static const Color cardBgLight = Color(0xFFFFFFFF);
   static const Color inputBgLight = Color(0xFFF0F2F5);
   static const Color cardBorderLight = Color(0xFFE9EDEF);
@@ -29,7 +29,7 @@ class AppTheme {
   static const Color textMutedLight = Color(0xFF8696A0);
 
   static ThemeData get darkTheme {
-    final baseTextTheme = GoogleFonts.interTextTheme(ThemeData.dark().textTheme);
+    final baseTextTheme = ThemeData.dark().textTheme;
 
     return ThemeData.dark().copyWith(
       scaffoldBackgroundColor: scaffoldBg,
@@ -113,7 +113,7 @@ class AppTheme {
   }
 
   static ThemeData get lightTheme {
-    final baseTextTheme = GoogleFonts.interTextTheme(ThemeData.light().textTheme);
+    final baseTextTheme = ThemeData.light().textTheme;
 
     return ThemeData.light().copyWith(
       scaffoldBackgroundColor: scaffoldBgLight,

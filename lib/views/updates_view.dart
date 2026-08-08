@@ -48,10 +48,10 @@ class UpdatesView extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'System Updates',
+                  'Updates',
                   style: TextStyle(
-                    color: textPrimaryColor,
-                    fontSize: 20,
+                    color: isDark ? const Color(0xFFE9EDEF) : const Color(0xFF111B21),
+                    fontSize: 26,
                     fontWeight: FontWeight.bold,
                   ),
                 ),

@@ -525,13 +525,11 @@ class DeviceProvider extends ChangeNotifier {
     _resetWatchdog(dbId);
 
     if (_token == null) return;
-    print('=== CONNECT WEBSOCKET TOKEN ===: $_token');
 
     // 2. Establish WebSocket connection
     try {
       final wsUrlStr = 'ws://103.150.186.252:8080/ws?deviceId=$hwId&type=mobile&token=$_token';
       final wsUri = Uri.parse(wsUrlStr);
-      print('=== CONNECT WEBSOCKET URL ===: $wsUrlStr');
       
       _webSocketChannel = WebSocketChannel.connect(
         wsUri,
@@ -540,7 +538,6 @@ class DeviceProvider extends ChangeNotifier {
 
       _webSocketSubscription = _webSocketChannel!.stream.listen(
         (message) {
-          print('=== WEBSOCKET MESSAGE ===: $message');
           
           try {
             final parsed = jsonDecode(message.toString());
@@ -585,18 +582,15 @@ class DeviceProvider extends ChangeNotifier {
           }
         },
         onError: (err) {
-          print('=== WEBSOCKET ERROR ===: $err');
           _cleanupSocket();
           _scheduleReconnect(dbId, hwId);
         },
         onDone: () {
-          print('=== WEBSOCKET CLOSED ===. Close Code: ${_webSocketChannel?.closeCode}, Reason: ${_webSocketChannel?.closeReason}');
           _cleanupSocket();
           _scheduleReconnect(dbId, hwId);
         },
       );
     } catch (e) {
-      print('=== WEBSOCKET EXCEPTION ===: $e');
       // Do not make offline immediately; let the 10-second watchdog expire
       _scheduleReconnect(dbId, hwId);
     }
@@ -611,7 +605,6 @@ class DeviceProvider extends ChangeNotifier {
     _reconnectTimer = Timer(const Duration(seconds: 3), () {
       _isReconnecting = false;
       if (_selectedDeviceId == dbId) {
-        print('=== WEBSOCKET RECONNECTING for $hwId ===');
         _connectWebSocket(dbId, hwId);
       }
     });

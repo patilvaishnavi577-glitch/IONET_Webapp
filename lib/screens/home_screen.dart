@@ -33,14 +33,29 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final session = context.read<UserSessionProvider>().session;
       final token = session.token;
       if (token != null) {
-        context.read<DeviceProvider>().fetchDevices(token, currentUserId: session.userId);
-        context.read<KnowledgeProvider>().fetchChannels(token);
+        try {
+          await context.read<DeviceProvider>().fetchDevices(
+            token,
+            currentUserId: session.userId,
+          );
+        } catch (e) {
+          print('Crash in fetchDevices: $e');
+        }
+        try {
+          await context.read<KnowledgeProvider>().fetchChannels(token);
+        } catch (e) {
+          print('Crash in fetchChannels: $e');
+        }
       }
-      context.read<UpdatesProvider>().fetchUpdates();
+      try {
+        await context.read<UpdatesProvider>().fetchUpdates();
+      } catch (e) {
+        print('Crash in fetchUpdates: $e');
+      }
     });
   }
 
@@ -79,7 +94,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 24),
                   TextFormField(
                     controller: deviceIdController,
-                    style: const TextStyle(color: AppTheme.textPrimary, fontSize: 15),
+                    style: const TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 15,
+                    ),
                     decoration: const InputDecoration(
                       labelText: 'Device ID',
                       hintText: 'Enter device ID',
@@ -94,7 +112,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 18),
                   TextFormField(
                     controller: deviceNameController,
-                    style: const TextStyle(color: AppTheme.textPrimary, fontSize: 15),
+                    style: const TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 15,
+                    ),
                     decoration: const InputDecoration(
                       labelText: 'Device Name',
                       hintText: 'Enter device name',
@@ -136,18 +157,22 @@ class _HomeScreenState extends State<HomeScreen> {
                             final deviceId = deviceIdController.text.trim();
                             final deviceName = deviceNameController.text.trim();
 
-                            final token = context.read<UserSessionProvider>().session.token;
+                            final token = context
+                                .read<UserSessionProvider>()
+                                .session
+                                .token;
                             if (token != null) {
                               context.read<DeviceProvider>().addDevice(
-                                    token: token,
-                                    deviceId: deviceId,
-                                    deviceName: deviceName,
-                                  );
+                                token: token,
+                                deviceId: deviceId,
+                                deviceName: deviceName,
+                              );
                             }
 
                             Navigator.of(dialogContext).pop();
 
-                            final isDesktop = MediaQuery.of(context).size.width > 768;
+                            final isDesktop =
+                                MediaQuery.of(context).size.width > 768;
                             if (!isDesktop) {
                               setState(() {
                                 _activeNavIndex = 0;
@@ -187,23 +212,37 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final isDark = context.watch<ThemeProvider>().isDarkMode;
 
-    final navStripColor = isDark ? const Color(0xFF11141A) : const Color(0xFFE2E8F0);
-    final sidebarColor = isDark ? const Color(0xFF161A22) : Colors.white;
-    final cardBorderColor = isDark ? AppTheme.cardBorder : AppTheme.cardBorderLight;
-    final textPrimaryColor = isDark ? AppTheme.textPrimary : AppTheme.textPrimaryLight;
-    final textSecondaryColor = isDark ? AppTheme.textSecondary : AppTheme.textSecondaryLight;
-    final searchBgColor = isDark ? const Color(0xFF202632) : const Color(0xFFF1F5F9);
+    final navStripColor = isDark
+        ? const Color(0xFF111B21)
+        : const Color(0xFFE2E8F0);
+    final sidebarColor = isDark ? AppTheme.scaffoldBg : Colors.white;
+    final cardBorderColor = isDark
+        ? AppTheme.cardBorder
+        : AppTheme.cardBorderLight;
+    final textPrimaryColor = isDark
+        ? AppTheme.textPrimary
+        : AppTheme.textPrimaryLight;
+    final textSecondaryColor = isDark
+        ? AppTheme.textSecondary
+        : AppTheme.textSecondaryLight;
+    final searchBgColor = isDark
+        ? AppTheme.inputBg
+        : const Color(0xFFF1F5F9);
 
     // Mobile view full-screen chat mode
-    if (!isDesktop && _showMobileChat && selectedDevice != null && _activeNavIndex == 0) {
+    if (!isDesktop &&
+        _showMobileChat &&
+        selectedDevice != null &&
+        _activeNavIndex == 0) {
       return Scaffold(
-        backgroundColor: isDark ? AppTheme.scaffoldBg : AppTheme.scaffoldBgLight,
+        backgroundColor: isDark
+            ? AppTheme.scaffoldBg
+            : AppTheme.scaffoldBgLight,
         body: SafeArea(
           child: DeviceChatView(
             device: selectedDevice,
             isMobile: true,
             onBack: () {
-              context.read<DeviceProvider>().selectDevice(null);
               setState(() {
                 _showMobileChat = false;
               });
@@ -231,40 +270,33 @@ class _HomeScreenState extends State<HomeScreen> {
                           const SizedBox(height: 16),
                           _buildFarLeftNavIcon(
                             index: 0,
-                            icon: Icons.laptop_chromebook,
+                            icon: Icons.chat,
                             tooltip: 'Devices',
                             isDark: isDark,
-                            badgeText: devices.isNotEmpty ? '${devices.length}' : null,
+                            badgeText: devices.isNotEmpty
+                                ? '${devices.length}'
+                                : null,
                           ),
                           const SizedBox(height: 16),
                           _buildFarLeftNavIcon(
                             index: 1,
-                            icon: Icons.history,
+                            icon: Icons.notifications_outlined,
                             tooltip: 'Updates',
                             isDark: isDark,
                           ),
                           const SizedBox(height: 16),
                           _buildFarLeftNavIcon(
                             index: 2,
-                            icon: Icons.bookmark_outline,
+                            icon: Icons.help_outline,
                             tooltip: 'Support',
                             isDark: isDark,
                           ),
                           const Spacer(),
-                          GestureDetector(
-                            onTap: () => setState(() => _activeNavIndex = 3),
-                            child: CircleAvatar(
-                              radius: 16,
-                              backgroundColor: const Color(0xFF1D4ED8),
-                              child: Text(
-                                'U',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
+                          _buildFarLeftNavIcon(
+                            index: 3,
+                            icon: Icons.person_outline,
+                            tooltip: 'Profile',
+                            isDark: isDark,
                           ),
                           const SizedBox(height: 10),
                           Text(
@@ -318,10 +350,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildBottomNavItem(0, Icons.laptop_chromebook, 'Devices', isDark),
-                    _buildBottomNavItem(1, Icons.history, 'Updates', isDark),
-                    _buildBottomNavItem(2, Icons.bookmark, 'Support', isDark),
-                    _buildBottomNavItem(3, Icons.person, 'Profile', isDark),
+                    _buildBottomNavItem(
+                      0,
+                      Icons.chat,
+                      'Devices',
+                      isDark,
+                    ),
+                    _buildBottomNavItem(1, Icons.notifications_outlined, 'Updates', isDark),
+                    _buildBottomNavItem(2, Icons.help_outline, 'Support', isDark),
+                    _buildBottomNavItem(3, Icons.person_outline, 'Profile', isDark),
                   ],
                 ),
               ),
@@ -332,10 +369,21 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBottomNavItem(int index, IconData icon, String label, bool isDark) {
+  Widget _buildBottomNavItem(
+    int index,
+    IconData icon,
+    String label,
+    bool isDark,
+  ) {
     final isSelected = _activeNavIndex == index;
-    final activeColor = const Color(0xFF2563EB);
-    final inactiveColor = isDark ? AppTheme.textSecondary : AppTheme.textSecondaryLight;
+    // Updated active colors: Light teal/mint for text and icon in dark mode, darker green for light mode
+    final activeColor = isDark ? const Color(0xFFC3E8D7) : const Color(0xFF005C4B); 
+    // Indicator background pill: Dark muted green in dark mode, light mint in light mode
+    final indicatorColor = isDark ? const Color(0xFF2A3C35) : const Color(0xFFC3E8D7).withValues(alpha: 0.6);
+    
+    final inactiveColor = isDark
+        ? AppTheme.textSecondary
+        : AppTheme.textSecondaryLight;
 
     return Expanded(
       child: GestureDetector(
@@ -348,12 +396,19 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              color: isSelected ? activeColor : inactiveColor,
-              size: 24,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              decoration: BoxDecoration(
+                color: isSelected ? indicatorColor : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                icon,
+                color: isSelected ? activeColor : inactiveColor,
+                size: 24,
+              ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
@@ -537,12 +592,40 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
               child: Row(
                 children: [
-                  Text(
-                    'Devices',
-                    style: TextStyle(
-                      color: textPrimaryColor,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
+                  Image.asset('assets/images/logo.png', height: 48),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF005C4B).withValues(alpha: 0.3)
+                          : const Color(0xFFD9FDD3),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.attach_money,
+                          size: 18,
+                          color: isDark
+                              ? const Color(0xFF00A884)
+                              : const Color(0xFF008069),
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          '1000',
+                          style: TextStyle(
+                            color: isDark
+                                ? const Color(0xFF00A884)
+                                : const Color(0xFF008069),
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -551,22 +634,34 @@ class _HomeScreenState extends State<HomeScreen> {
 
             // Search Bar
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 2.0,
+              ),
               child: TextField(
                 onChanged: (query) => deviceProvider.setSearchQuery(query),
-                style: TextStyle(color: textPrimaryColor, fontSize: 14),
+                style: TextStyle(color: textPrimaryColor, fontSize: 13),
                 decoration: InputDecoration(
                   hintText: 'Search or start a new device chat',
                   hintStyle: TextStyle(
-                    color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
-                    fontSize: 13.5,
+                    color: isDark
+                        ? AppTheme.textMuted
+                        : AppTheme.textMutedLight,
+                    fontSize: 12.5,
                   ),
-                  prefixIcon: Icon(Icons.search, size: 20, color: textSecondaryColor),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    size: 18,
+                    color: textSecondaryColor,
+                  ),
                   filled: true,
                   fillColor: searchBgColor,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide.none,
                   ),
                 ),
@@ -574,18 +669,32 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Category Filter Chips
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Row(
-                children: [
-                  _buildFilterChip('All', isSelected: _activeFilter == 'All', isDark: isDark),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('Owned', isSelected: _activeFilter == 'Owned', isDark: isDark),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('Shared', isSelected: _activeFilter == 'Shared', isDark: isDark),
-                ],
+            Align(
+              alignment: Alignment.centerLeft,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  children: [
+                    _buildFilterChip(
+                      'All',
+                      isSelected: _activeFilter == 'All',
+                      isDark: isDark,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildFilterChip(
+                      'Owned',
+                      isSelected: _activeFilter == 'Owned',
+                      isDark: isDark,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildFilterChip(
+                      'Shared',
+                      isSelected: _activeFilter == 'Shared',
+                      isDark: isDark,
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -618,7 +727,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             Text(
                               'Click + button on the bottom right to add',
                               style: TextStyle(
-                                color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
+                                color: isDark
+                                    ? AppTheme.textMuted
+                                    : AppTheme.textMutedLight,
                                 fontSize: 13,
                               ),
                             ),
@@ -628,11 +739,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     )
                   : ListView.separated(
                       itemCount: devices.length,
-                      separatorBuilder: (context, index) => Divider(
-                        height: 1,
-                        color: cardBorderColor,
-                        indent: 72,
-                      ),
+                      separatorBuilder: (context, index) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final device = devices[index];
                         final isSelected = selectedDevice?.id == device.id;
@@ -648,6 +755,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               });
                             }
                           },
+                          onDoubleTap: () => _showDeleteDeviceDialog(
+                            context,
+                            deviceProvider,
+                            device,
+                            isDark,
+                          ),
                         );
                       },
                     ),
@@ -659,8 +772,10 @@ class _HomeScreenState extends State<HomeScreen> {
           right: 16,
           child: FloatingActionButton(
             onPressed: () => _showAddDeviceDialog(context),
-            backgroundColor: const Color(0xFF2563EB),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            backgroundColor: const Color(0xFF00695C),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             child: const Icon(Icons.add, color: Colors.white, size: 28),
           ),
         ),
@@ -668,7 +783,55 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-
+  void _showDeleteDeviceDialog(
+    BuildContext context,
+    DeviceProvider deviceProvider,
+    Device device,
+    bool isDark,
+  ) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1D222B) : Colors.white,
+        title: Text(
+          'Delete Device',
+          style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+        ),
+        content: Text(
+          'Are you sure you want to delete ${device.name}?',
+          style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Color(0xFF10B981)),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(dialogContext).pop();
+              final token = context.read<UserSessionProvider>().session.token;
+              if (token != null) {
+                await deviceProvider.deleteDevice(
+                  token: token,
+                  deviceId: device.id,
+                );
+                setState(() {
+                  _showMobileChat = false;
+                });
+              }
+            },
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildFarLeftNavIcon({
     required int index,
@@ -678,8 +841,12 @@ class _HomeScreenState extends State<HomeScreen> {
     String? badgeText,
   }) {
     final isSelected = _activeNavIndex == index;
-    final secondaryTextColor = isDark ? AppTheme.textSecondary : AppTheme.textSecondaryLight;
-    final hoverBgColor = isDark ? const Color(0xFF202632) : const Color(0xFFCBD5E1);
+    final secondaryTextColor = isDark
+        ? AppTheme.textSecondary
+        : AppTheme.textSecondaryLight;
+        
+    final activeColor = isDark ? const Color(0xFFC3E8D7) : const Color(0xFF005C4B); 
+    final indicatorColor = isDark ? const Color(0xFF2A3C35) : const Color(0xFFC3E8D7).withValues(alpha: 0.6);
 
     return Tooltip(
       message: tooltip,
@@ -693,16 +860,14 @@ class _HomeScreenState extends State<HomeScreen> {
           clipBehavior: Clip.none,
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: isSelected ? hoverBgColor : Colors.transparent,
-                shape: BoxShape.circle,
+                color: isSelected ? indicatorColor : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(
                 icon,
-                color: isSelected
-                    ? (isDark ? Colors.white : AppTheme.textPrimaryLight)
-                    : secondaryTextColor,
+                color: isSelected ? activeColor : secondaryTextColor,
                 size: 22,
               ),
             ),
@@ -711,7 +876,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 right: -4,
                 top: -2,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF2DD4BF),
                     borderRadius: BorderRadius.circular(10),
@@ -732,9 +900,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildFilterChip(String label, {required bool isSelected, required bool isDark}) {
-    final cardBorderColor = isDark ? AppTheme.cardBorder : AppTheme.cardBorderLight;
-    final secondaryTextColor = isDark ? AppTheme.textSecondary : AppTheme.textSecondaryLight;
+  Widget _buildFilterChip(
+    String label, {
+    required bool isSelected,
+    required bool isDark,
+  }) {
+    final cardBorderColor = isDark
+        ? AppTheme.cardBorder
+        : AppTheme.cardBorderLight;
+    final secondaryTextColor = isDark
+        ? AppTheme.textSecondary
+        : AppTheme.textSecondaryLight;
 
     return GestureDetector(
       onTap: () {
@@ -750,16 +926,20 @@ class _HomeScreenState extends State<HomeScreen> {
           } else if (label == 'Shared') {
             type = 'SHARED';
           }
-          context.read<DeviceProvider>().fetchDevices(token, type: type, currentUserId: session.userId);
+          context.read<DeviceProvider>().fetchDevices(
+            token,
+            type: type,
+            currentUserId: session.userId,
+          );
         }
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         decoration: BoxDecoration(
           color: isSelected
               ? const Color(0xFF10B981).withValues(alpha: 0.2)
-              : (isDark ? const Color(0xFF202632) : const Color(0xFFF1F5F9)),
-          borderRadius: BorderRadius.circular(18),
+              : (isDark ? AppTheme.inputBg : const Color(0xFFF1F5F9)),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isSelected ? const Color(0xFF10B981) : cardBorderColor,
           ),
@@ -768,7 +948,7 @@ class _HomeScreenState extends State<HomeScreen> {
           label,
           style: TextStyle(
             color: isSelected ? const Color(0xFF10B981) : secondaryTextColor,
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
@@ -777,15 +957,22 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildEmptyState(bool isDark) {
-    final textPrimaryColor = isDark ? AppTheme.textPrimary : AppTheme.textPrimaryLight;
-    final textSecondaryColor = isDark ? AppTheme.textSecondary : AppTheme.textSecondaryLight;
-    
+    final textPrimaryColor = isDark
+        ? AppTheme.textPrimary
+        : AppTheme.textPrimaryLight;
+    final textSecondaryColor = isDark
+        ? AppTheme.textSecondary
+        : AppTheme.textSecondaryLight;
+
     return Container(
       color: isDark ? const Color(0xFF111B21) : const Color(0xFFF8FAFC),
       child: Center(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24.0,
+              vertical: 32.0,
+            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -797,7 +984,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: isDark ? const Color(0xFF202C33) : Colors.white,
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
-                      color: isDark ? const Color(0xFF2A3942) : const Color(0xFFE2E8F0),
+                      color: isDark
+                          ? const Color(0xFF2A3942)
+                          : const Color(0xFFE2E8F0),
                       width: 1,
                     ),
                     boxShadow: [
@@ -820,25 +1009,36 @@ class _HomeScreenState extends State<HomeScreen> {
                             Icon(
                               Icons.laptop_chromebook_rounded,
                               size: 80,
-                              color: isDark ? const Color(0xFF8696A0) : const Color(0xFF64748B),
+                              color: isDark
+                                  ? const Color(0xFF8696A0)
+                                  : const Color(0xFF64748B),
                             ),
                             Positioned(
                               right: 18,
                               bottom: 12,
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                  vertical: 6,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: isDark ? const Color(0xFF111B21) : Colors.white,
+                                  color: isDark
+                                      ? const Color(0xFF111B21)
+                                      : Colors.white,
                                   borderRadius: BorderRadius.circular(5),
                                   border: Border.all(
-                                    color: isDark ? const Color(0xFF8696A0) : const Color(0xFF64748B),
+                                    color: isDark
+                                        ? const Color(0xFF8696A0)
+                                        : const Color(0xFF64748B),
                                     width: 1.5,
                                   ),
                                 ),
                                 child: Icon(
                                   Icons.phone_android_rounded,
                                   size: 16,
-                                  color: isDark ? const Color(0xFF00A884) : const Color(0xFF008069),
+                                  color: isDark
+                                      ? const Color(0xFF00A884)
+                                      : const Color(0xFF008069),
                                 ),
                               ),
                             ),
@@ -846,7 +1046,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      
+
                       // Title
                       Text(
                         'Download IONET for Mobile',
@@ -858,7 +1058,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      
+
                       // Subtitle
                       Text(
                         'Get extra features like device monitoring, screen sharing and remote commands.',
@@ -870,15 +1070,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      
+
                       // Download button
                       ElevatedButton(
                         onPressed: () {},
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: isDark ? const Color(0xFF00A884) : const Color(0xFF008069),
+                          backgroundColor: isDark
+                              ? const Color(0xFF00A884)
+                              : const Color(0xFF008069),
                           foregroundColor: Colors.white,
                           elevation: 0,
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 12,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                           ),
@@ -895,7 +1100,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 48),
-                
+
                 // End-to-End Encrypted Badge
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -903,13 +1108,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     Icon(
                       Icons.lock_outline_rounded,
                       size: 12,
-                      color: isDark ? const Color(0xFF8696A0) : const Color(0xFF94A3B8),
+                      color: isDark
+                          ? const Color(0xFF8696A0)
+                          : const Color(0xFF94A3B8),
                     ),
                     const SizedBox(width: 6),
                     Text(
                       'End-to-end encrypted',
                       style: TextStyle(
-                        color: isDark ? const Color(0xFF8696A0) : const Color(0xFF94A3B8),
+                        color: isDark
+                            ? const Color(0xFF8696A0)
+                            : const Color(0xFF94A3B8),
                         fontSize: 12,
                         letterSpacing: 0.2,
                       ),

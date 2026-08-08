@@ -18,15 +18,25 @@ class DeviceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeBg = const Color(0xFF2A3942); // WhatsApp Web active item background
-    final hoverBg = const Color(0xFF202C33);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeBg = isDark ? AppTheme.inputBg : const Color(0xFFF0F2F5);
 
-    return Material(
-      color: isSelected ? activeBg : Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        onDoubleTap: onDoubleTap,
-        hoverColor: hoverBg,
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? AppTheme.cardBorder : AppTheme.cardBorderLight,
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: isSelected ? activeBg : Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          onDoubleTap: onDoubleTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
           child: Row(
@@ -36,7 +46,7 @@ class DeviceTile extends StatelessWidget {
                 width: 46,
                 height: 46,
                 decoration: const BoxDecoration(
-                  color: Color(0xFF1D4ED8),
+                  color: const Color(0xFF00695C),
                   shape: BoxShape.circle,
                 ),
                 child: ClipOval(
@@ -78,7 +88,7 @@ class DeviceTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      device.deviceId,
+                      device.messages.isNotEmpty ? device.messages.last.text : 'No messages yet',
                       style: const TextStyle(
                         color: AppTheme.textSecondary,
                         fontSize: 13,
@@ -89,6 +99,19 @@ class DeviceTile extends StatelessWidget {
                   ],
                 ),
               ),
+
+              // Timestamp and Unread Badge
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '07:29', // Mock timestamp to match design
+                    style: const TextStyle(
+                      color: AppTheme.textMuted,
+                      fontSize: 11,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
 
               // Unread Badge (if any)
               if (device.unreadCount > 0)
@@ -107,9 +130,12 @@ class DeviceTile extends StatelessWidget {
                     ),
                   ),
                 ),
+                ],
+              ),
             ],
           ),
         ),
+      ),
       ),
     );
   }
