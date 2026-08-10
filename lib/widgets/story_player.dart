@@ -148,6 +148,32 @@ class _StoryPlayerState extends State<StoryPlayer> {
             child: _buildSlideContent(slide),
           ),
 
+          // 5. Tap Zones for Navigation
+          Positioned.fill(
+            child: Row(
+              children: [
+                // Left 30% goes back
+                Expanded(
+                  flex: 3,
+                  child: GestureDetector(
+                    onTap: _prevSlide,
+                    behavior: HitTestBehavior.translucent,
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+                // Right 70% goes forward
+                Expanded(
+                  flex: 7,
+                  child: GestureDetector(
+                    onTap: _nextSlide,
+                    behavior: HitTestBehavior.translucent,
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // 2. Linear Gradient Overlay at top for visibility of controls
           Positioned(
             top: 0,
@@ -237,32 +263,6 @@ class _StoryPlayerState extends State<StoryPlayer> {
                 IconButton(
                   icon: const Icon(Icons.close, color: Colors.white, size: 28),
                   onPressed: widget.onClose,
-                ),
-              ],
-            ),
-          ),
-
-          // 5. Tap Zones for Navigation
-          Positioned.fill(
-            child: Row(
-              children: [
-                // Left 30% goes back
-                Expanded(
-                  flex: 3,
-                  child: GestureDetector(
-                    onTap: _prevSlide,
-                    behavior: HitTestBehavior.translucent,
-                    child: const SizedBox.expand(),
-                  ),
-                ),
-                // Right 70% goes forward
-                Expanded(
-                  flex: 7,
-                  child: GestureDetector(
-                    onTap: _nextSlide,
-                    behavior: HitTestBehavior.translucent,
-                    child: const SizedBox.expand(),
-                  ),
                 ),
               ],
             ),

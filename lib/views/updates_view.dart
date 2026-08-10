@@ -55,13 +55,6 @@ class UpdatesView extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                IconButton(
-                  icon: Icon(
-                    Icons.refresh,
-                    color: isDark ? AppTheme.textSecondary : AppTheme.textSecondaryLight,
-                  ),
-                  onPressed: () => context.read<UpdatesProvider>().fetchUpdates(),
-                ),
               ],
             ),
           ),

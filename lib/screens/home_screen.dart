@@ -302,7 +302,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           const SizedBox(height: 16),
                           _buildFarLeftNavIcon(
                             index: 0,
-                            icon: Icons.chat,
+                            icon: Icons.chat_bubble_outline,
                             tooltip: 'Devices',
                             isDark: isDark,
                             badgeText: devices.isNotEmpty
@@ -384,7 +384,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     _buildBottomNavItem(
                       0,
-                      Icons.chat,
+                      Icons.chat_bubble_outline,
                       'Devices',
                       isDark,
                     ),
