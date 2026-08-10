@@ -1,6 +1,6 @@
 {
-    "name": "ionet_onboarding",
-    "short_name": "ionet_onboarding",
+    "name": "Ionet",
+    "short_name": "Ionet",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/channel_model.dart';
 import '../providers/knowledge_provider.dart';
@@ -61,6 +63,22 @@ class _KnowledgeViewState extends State<KnowledgeView> {
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
                   ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: Stack(
+                    alignment: Alignment.center,
+                    children: const [
+                      FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white, size: 32),
+                      FaIcon(FontAwesomeIcons.whatsapp, color: Color(0xFF25D366), size: 28),
+                    ],
+                  ),
+                  onPressed: () async {
+                    final url = Uri.parse('https://whatsapp.com/channel/0029VbBPglwATRSi0Zibax3w');
+                    if (await canLaunchUrl(url)) {
+                      await launchUrl(url, mode: LaunchMode.externalApplication);
+                    }
+                  },
                 ),
               ],
             ),
@@ -213,6 +231,14 @@ class _KnowledgeViewState extends State<KnowledgeView> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${(channel.name.length * 17) % 900 + 100}K followers',
+                      style: TextStyle(
+                        color: textSecondaryColor,
+                        fontSize: 13,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -224,15 +250,17 @@ class _KnowledgeViewState extends State<KnowledgeView> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        isFollowing ? 'Following' : 'Follow',
-                        style: TextStyle(
-                          color: isFollowing ? textSecondaryColor : accentGreen,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                      if (!isFollowing) ...[
+                        Text(
+                          'Follow',
+                          style: TextStyle(
+                            color: accentGreen,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
+                        const SizedBox(width: 8),
+                      ],
                       Icon(
                         Icons.chevron_right,
                         color: textSecondaryColor,

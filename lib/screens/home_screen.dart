@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../config/api_config.dart';
@@ -102,9 +103,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       labelText: 'Device ID',
                       hintText: 'Enter device ID',
                     ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+                    ],
                     validator: (val) {
                       if (val == null || val.trim().isEmpty) {
                         return 'Please enter Device ID';
+                      }
+                      if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(val.trim())) {
+                        return 'Special characters not allowed';
                       }
                       return null;
                     },
@@ -120,9 +127,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       labelText: 'Device Name',
                       hintText: 'Enter device name',
                     ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9 ]')),
+                    ],
                     validator: (val) {
                       if (val == null || val.trim().isEmpty) {
                         return 'Please enter Device Name';
+                      }
+                      if (!RegExp(r'^[a-zA-Z0-9 ]+$').hasMatch(val.trim())) {
+                        return 'Special characters not allowed';
                       }
                       return null;
                     },
@@ -305,9 +318,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             icon: Icons.chat_bubble_outline,
                             tooltip: 'Devices',
                             isDark: isDark,
-                            badgeText: devices.isNotEmpty
-                                ? '${devices.length}'
-                                : null,
                           ),
                           const SizedBox(height: 16),
                           _buildFarLeftNavIcon(

@@ -745,7 +745,9 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                             backgroundColor: accentGreen,
                             backgroundImage: device.imageUrl != null ? NetworkImage(device.imageUrl!) : null,
                             child: device.imageUrl == null
-                                ? const Icon(Icons.hub_outlined, color: Colors.white, size: 40)
+                                ? ClipOval(
+                                    child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
+                                  )
                                 : null,
                           ),
                           if (isOwner)

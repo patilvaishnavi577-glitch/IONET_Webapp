@@ -56,16 +56,14 @@ class DeviceTile extends StatelessWidget {
                           width: 46,
                           height: 46,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => const Icon(
-                            Icons.hub_outlined,
-                            color: Colors.white,
-                            size: 24,
+                          errorBuilder: (context, error, stackTrace) => Image.asset(
+                            'assets/images/logo.png',
+                            fit: BoxFit.cover,
                           ),
                         )
-                      : const Icon(
-                          Icons.hub_outlined,
-                          color: Colors.white,
-                          size: 24,
+                      : Image.asset(
+                          'assets/images/logo.png',
+                          fit: BoxFit.cover,
                         ),
                 ),
               ),

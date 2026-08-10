@@ -93,42 +93,39 @@ class ChannelFeedView extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                    Text(
+                      '${(channel.name.length * 17) % 900 + 100}K followers',
+                      style: TextStyle(
+                        color: textSecondaryColor,
+                        fontSize: 13,
+                      ),
+                    ),
                   ],
                 ),
               ),
 
-              PopupMenuButton<String>(
-                icon: Icon(Icons.more_vert, color: textSecondaryColor),
-                color: isDark ? const Color(0xFF233138) : Colors.white,
-                elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                offset: const Offset(0, 40),
-                onSelected: (value) async {
-                  if (value == 'unfollow') {
-                    final token = context.read<UserSessionProvider>().session.token;
-                    if (token == null) return;
-                    final messenger = ScaffoldMessenger.of(context);
-                    
-                    final error = await knowledgeProvider.toggleFollow(channel.id, token);
-                    if (error != null) {
-                      messenger.showSnackBar(SnackBar(content: Text('Failed to unfollow: $error'), backgroundColor: Colors.redAccent));
-                    }
+              TextButton(
+                onPressed: () async {
+                  final token = context.read<UserSessionProvider>().session.token;
+                  if (token == null) return;
+                  final messenger = ScaffoldMessenger.of(context);
+                  
+                  final error = await knowledgeProvider.toggleFollow(channel.id, token);
+                  if (error != null) {
+                    messenger.showSnackBar(SnackBar(
+                      content: Text('Failed to update follow status: $error'),
+                      backgroundColor: Colors.redAccent,
+                    ));
                   }
                 },
-                itemBuilder: (context) => [
-                  if (isFollowing)
-                    PopupMenuItem(
-                      value: 'unfollow',
-                      height: 40,
-                      child: Text(
-                        'Unfollow Channel',
-                        style: TextStyle(
-                          color: isDark ? const Color(0xFFD1D7DB) : Colors.black87,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                ],
+                child: Text(
+                  isFollowing ? 'Unfollow' : 'Follow',
+                  style: TextStyle(
+                    color: isFollowing ? textSecondaryColor : accentGreen,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           ),

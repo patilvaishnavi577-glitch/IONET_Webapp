@@ -69,7 +69,7 @@ class _IonetOnboardingAppState extends State<IonetOnboardingApp> {
       child: Consumer<ThemeProvider>(
         builder: (context, themeProv, child) {
           return MaterialApp.router(
-            title: 'Ionet Web Control Application',
+            title: 'Ionet',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,

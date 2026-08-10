@@ -423,7 +423,9 @@ class _DeviceChatViewState extends State<DeviceChatView> {
                       ? NetworkImage(widget.device.imageUrl!)
                       : null,
                   child: widget.device.imageUrl == null
-                      ? const Icon(Icons.hub_outlined, color: Colors.white, size: 20)
+                      ? ClipOval(
+                          child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
+                        )
                       : null,
                 ),
                 const SizedBox(width: 12),
@@ -688,14 +690,14 @@ class _DeviceChatViewState extends State<DeviceChatView> {
           CircleAvatar(
             radius: 40,
             backgroundColor: isDark ? const Color(0xFFD1D7DB) : const Color(0xFFE0E0E0),
-            child: Text(
-              _getInitials(widget.device.name),
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: isDark ? AppTheme.scaffoldBg : const Color(0xFF54656F),
-              ),
-            ),
+            backgroundImage: widget.device.imageUrl != null
+                ? NetworkImage(widget.device.imageUrl!)
+                : null,
+            child: widget.device.imageUrl == null
+                ? ClipOval(
+                    child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
+                  )
+                : null,
           ),
           const SizedBox(height: 24),
           Text(
