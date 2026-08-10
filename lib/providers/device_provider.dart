@@ -528,7 +528,16 @@ class DeviceProvider extends ChangeNotifier {
 
     // 2. Establish WebSocket connection
     try {
-      final wsUrlStr = 'ws://103.150.186.252:8080/ws?deviceId=$hwId&type=mobile&token=$_token';
+      String wsBase = ApiConfig.baseUrl;
+      if (wsBase.startsWith('https://')) {
+        wsBase = wsBase.replaceFirst('https://', 'wss://');
+      } else if (wsBase.startsWith('http://')) {
+        wsBase = wsBase.replaceFirst('http://', 'ws://');
+      }
+      if (kIsWeb && Uri.base.scheme == 'https' && wsBase.startsWith('ws://')) {
+        wsBase = wsBase.replaceFirst('ws://', 'wss://');
+      }
+      final wsUrlStr = '$wsBase/ws?deviceId=$hwId&type=mobile&token=$_token';
       final wsUri = Uri.parse(wsUrlStr);
       
       _webSocketChannel = WebSocketChannel.connect(

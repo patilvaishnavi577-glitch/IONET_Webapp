@@ -229,27 +229,59 @@ class _HomeScreenState extends State<HomeScreen> {
         ? AppTheme.inputBg
         : const Color(0xFFF1F5F9);
 
-    // Mobile view full-screen chat mode
-    if (!isDesktop &&
-        _showMobileChat &&
-        selectedDevice != null &&
-        _activeNavIndex == 0) {
-      return Scaffold(
-        backgroundColor: isDark
-            ? AppTheme.scaffoldBg
-            : AppTheme.scaffoldBgLight,
-        body: SafeArea(
-          child: DeviceChatView(
-            device: selectedDevice,
-            isMobile: true,
-            onBack: () {
-              setState(() {
-                _showMobileChat = false;
-              });
-            },
+    // Mobile view full-screen modes
+    if (!isDesktop) {
+      if (_showMobileChat && selectedDevice != null && _activeNavIndex == 0) {
+        return Scaffold(
+          backgroundColor: isDark
+              ? AppTheme.scaffoldBg
+              : AppTheme.scaffoldBgLight,
+          body: SafeArea(
+            child: DeviceChatView(
+              device: selectedDevice,
+              isMobile: true,
+              onBack: () {
+                setState(() {
+                  _showMobileChat = false;
+                });
+              },
+            ),
           ),
-        ),
-      );
+        );
+      }
+
+      final updatesProvider = context.watch<UpdatesProvider>();
+      final selectedUpdate = updatesProvider.selectedUpdate;
+
+      if (_activeNavIndex == 1 && selectedUpdate != null) {
+        return Scaffold(
+          backgroundColor: Colors.black,
+          body: SafeArea(
+            child: StoryPlayer(
+              update: selectedUpdate,
+              onClose: () {
+                updatesProvider.selectUpdate(null);
+              },
+            ),
+          ),
+        );
+      }
+
+      if (_activeNavIndex == 2 && selectedChannel != null) {
+        return Scaffold(
+          backgroundColor: isDark
+              ? AppTheme.scaffoldBg
+              : AppTheme.scaffoldBgLight,
+          body: SafeArea(
+            child: ChannelFeedView(
+              channel: selectedChannel,
+              onBack: () {
+                context.read<KnowledgeProvider>().selectChannel(null);
+              },
+            ),
+          ),
+        );
+      }
     }
 
     return Scaffold(
@@ -280,7 +312,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           const SizedBox(height: 16),
                           _buildFarLeftNavIcon(
                             index: 1,
-                            icon: Icons.notifications_outlined,
+                            icon: Icons.sync,
                             tooltip: 'Updates',
                             isDark: isDark,
                           ),
@@ -356,7 +388,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       'Devices',
                       isDark,
                     ),
-                    _buildBottomNavItem(1, Icons.notifications_outlined, 'Updates', isDark),
+                    _buildBottomNavItem(1, Icons.sync, 'Updates', isDark),
                     _buildBottomNavItem(2, Icons.help_outline, 'Support', isDark),
                     _buildBottomNavItem(3, Icons.person_outline, 'Profile', isDark),
                   ],
