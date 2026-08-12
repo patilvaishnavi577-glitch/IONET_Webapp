@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "puppeteer": "^25.5.0",
-    "source-map": "^0.8.0"
-  }
-}

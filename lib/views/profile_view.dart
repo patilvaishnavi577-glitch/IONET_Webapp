@@ -145,11 +145,39 @@ class _ProfileViewState extends State<ProfileView> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    'Available',
-                    style: TextStyle(
-                      color: textSecondary,
-                      fontSize: 14,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF005C4B).withValues(alpha: 0.3)
+                          : const Color(0xFFD9FDD3),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.attach_money,
+                          size: 18,
+                          color: isDark
+                              ? const Color(0xFF00A884)
+                              : const Color(0xFF008069),
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          '1000',
+                          style: TextStyle(
+                            color: isDark
+                                ? const Color(0xFF00A884)
+                                : const Color(0xFF008069),
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   

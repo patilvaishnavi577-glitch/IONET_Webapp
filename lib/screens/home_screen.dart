@@ -635,41 +635,6 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Row(
                 children: [
                   Image.asset('assets/images/logo.png', height: 48),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF005C4B).withValues(alpha: 0.3)
-                          : const Color(0xFFD9FDD3),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.attach_money,
-                          size: 18,
-                          color: isDark
-                              ? const Color(0xFF00A884)
-                              : const Color(0xFF008069),
-                        ),
-                        const SizedBox(width: 2),
-                        Text(
-                          '1000',
-                          style: TextStyle(
-                            color: isDark
-                                ? const Color(0xFF00A884)
-                                : const Color(0xFF008069),
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
               ),
             ),

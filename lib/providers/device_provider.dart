@@ -268,7 +268,7 @@ class DeviceProvider extends ChangeNotifier {
     final device = _devices[index];
     final success = await _apiService.updateDeviceName(
       token: token,
-      deviceId: device.id,
+      deviceId: device.deviceId,
       deviceName: deviceName,
     );
     _setLoading(false);
