@@ -41,14 +41,17 @@ class DeviceTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
           child: Row(
             children: [
-              // Blue Node Icon Avatar (Matching Screenshot 2, 3 & WhatsApp Web)
+              // Default/Custom Device Avatar with proper fit & contrast
               Container(
                 width: 46,
                 height: 46,
-                decoration: const BoxDecoration(
-                  color: const Color(0xFF00695C),
+                decoration: BoxDecoration(
+                  color: device.imageUrl != null
+                      ? Colors.transparent
+                      : (isDark ? const Color(0xFF202C33) : const Color(0xFFF0F2F5)),
                   shape: BoxShape.circle,
                 ),
+                padding: device.imageUrl != null ? EdgeInsets.zero : const EdgeInsets.all(6),
                 child: ClipOval(
                   child: device.imageUrl != null
                       ? Image.network(
@@ -56,14 +59,17 @@ class DeviceTile extends StatelessWidget {
                           width: 46,
                           height: 46,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Image.asset(
-                            'assets/images/logo.png',
-                            fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: Image.asset(
+                              'assets/images/logo.png',
+                              fit: BoxFit.contain,
+                            ),
                           ),
                         )
                       : Image.asset(
                           'assets/images/logo.png',
-                          fit: BoxFit.cover,
+                          fit: BoxFit.contain,
                         ),
                 ),
               ),
@@ -76,8 +82,8 @@ class DeviceTile extends StatelessWidget {
                   children: [
                     Text(
                       device.name,
-                      style: const TextStyle(
-                        color: AppTheme.textPrimary,
+                      style: TextStyle(
+                        color: isDark ? AppTheme.textPrimary : AppTheme.textPrimaryLight,
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                       ),
@@ -87,8 +93,8 @@ class DeviceTile extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       device.messages.isNotEmpty ? device.messages.last.text : 'No messages yet',
-                      style: const TextStyle(
-                        color: AppTheme.textSecondary,
+                      style: TextStyle(
+                        color: isDark ? AppTheme.textSecondary : AppTheme.textSecondaryLight,
                         fontSize: 13,
                       ),
                       maxLines: 1,
@@ -104,8 +110,8 @@ class DeviceTile extends StatelessWidget {
                 children: [
                   Text(
                     '07:29', // Mock timestamp to match design
-                    style: const TextStyle(
-                      color: AppTheme.textMuted,
+                    style: TextStyle(
+                      color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
                       fontSize: 11,
                     ),
                   ),

@@ -296,6 +296,12 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                   }
                 }
 
+                if (widget.device.sharedUsers.length >= 3) {
+                  ToastService.show(context, 'More than 3 members are not allowed', isError: true);
+                  Navigator.of(dialogContext).pop();
+                  return;
+                }
+
                 Navigator.of(dialogContext).pop();
 
                 final error = await deviceProvider.shareDevice(
@@ -740,15 +746,34 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                       cursor: (isOwner || device.imageUrl != null) ? SystemMouseCursors.click : SystemMouseCursors.basic,
                       child: Stack(
                         children: [
-                          CircleAvatar(
-                            radius: 50,
-                            backgroundColor: accentGreen,
-                            backgroundImage: device.imageUrl != null ? NetworkImage(device.imageUrl!) : null,
-                            child: device.imageUrl == null
-                                ? ClipOval(
-                                    child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
-                                  )
-                                : null,
+                          Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              color: device.imageUrl != null
+                                  ? Colors.transparent
+                                  : (isDark ? const Color(0xFF202C33) : Colors.white),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isDark ? const Color(0xFF2A3942) : const Color(0xFFDFE5E7),
+                                width: 1.5,
+                              ),
+                            ),
+                            padding: device.imageUrl != null ? EdgeInsets.zero : const EdgeInsets.all(12),
+                            child: ClipOval(
+                              child: device.imageUrl != null
+                                  ? Image.network(
+                                      device.imageUrl!,
+                                      width: 100,
+                                      height: 100,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => Padding(
+                                        padding: const EdgeInsets.all(12),
+                                        child: Image.asset('assets/images/logo.png', fit: BoxFit.contain),
+                                      ),
+                                    )
+                                  : Image.asset('assets/images/logo.png', fit: BoxFit.contain),
+                            ),
                           ),
                           if (isOwner)
                             Positioned(
@@ -842,7 +867,13 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                       if (isOwner)
                         IconButton(
                           icon: Icon(Icons.person_add_alt_1, color: accentGreen),
-                          onPressed: () => _showShareDeviceDialog(context, isDark),
+                          onPressed: () {
+                            if (device.sharedUsers.length >= 3) {
+                              ToastService.show(context, 'More than 3 members are not allowed', isError: true);
+                            } else {
+                              _showShareDeviceDialog(context, isDark);
+                            }
+                          },
                         ),
                     ],
                   ),

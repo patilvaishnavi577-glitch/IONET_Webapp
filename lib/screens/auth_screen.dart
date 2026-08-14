@@ -70,7 +70,12 @@ class _AuthScreenState extends State<AuthScreen> {
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
               enabled: !isLoading,
-              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppTheme.textPrimary
+                    : AppTheme.textPrimaryLight,
+                fontSize: 16,
+              ),
               decoration: const InputDecoration(
                 labelText: 'Email',
                 hintText: 'Email',

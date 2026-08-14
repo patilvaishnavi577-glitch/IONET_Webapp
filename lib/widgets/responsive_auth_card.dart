@@ -23,7 +23,7 @@ class ResponsiveAuthCard extends StatelessWidget {
     final isDesktop = mediaQuery.size.width > 600;
 
     return Scaffold(
-      backgroundColor: AppTheme.scaffoldBg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -45,7 +45,12 @@ class ResponsiveAuthCard extends StatelessWidget {
                         Align(
                           alignment: Alignment.centerLeft,
                           child: IconButton(
-                            icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
+                            icon: Icon(
+                              Icons.arrow_back,
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? AppTheme.textPrimary
+                                  : AppTheme.textPrimaryLight,
+                            ),
                             onPressed: onBackPressed ?? () => Navigator.of(context).maybePop(),
                           ),
                         ),
@@ -66,7 +71,9 @@ class ResponsiveAuthCard extends StatelessWidget {
                       title,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? AppTheme.textPrimary
+                                : AppTheme.textPrimaryLight,
                             fontWeight: FontWeight.w400,
                             fontSize: 28,
                           ),

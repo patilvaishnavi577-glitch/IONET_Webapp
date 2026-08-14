@@ -196,27 +196,27 @@ class DeviceProvider extends ChangeNotifier {
     return false;
   }
 
-  /// Add a new device via backend API
-  Future<bool> addDevice({
+  /// Add a new device via backend API. Returns null on success, or error message on failure.
+  Future<String?> addDevice({
     required String token,
     required String deviceId,
     required String deviceName,
   }) async {
     _setLoading(true);
-    final success = await _apiService.createDevice(
+    final errorMsg = await _apiService.createDevice(
       token: token,
       deviceId: deviceId,
       deviceName: deviceName,
     );
     _setLoading(false);
 
-    if (success) {
+    if (errorMsg == null) {
       await fetchDevices(token, currentUserId: _currentUserId);
       _selectedDeviceId = deviceId;
       notifyListeners();
-      return true;
+      return null;
     }
-    return false;
+    return errorMsg;
   }
 
 
@@ -237,7 +237,7 @@ class DeviceProvider extends ChangeNotifier {
     final isShared = device.isShared;
 
     final success = isShared
-        ? await _apiService.unshareDeviceBySharedUser(token: token, deviceId: device.deviceId)
+        ? await _apiService.unshareDeviceBySharedUser(token: token, deviceId: device.id)
         : await _apiService.deleteDevice(token: token, deviceId: device.deviceId);
     _setLoading(false);
 

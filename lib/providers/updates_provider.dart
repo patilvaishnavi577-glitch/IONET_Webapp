@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/update_model.dart';
 import '../services/api_service.dart';
 
 class UpdatesProvider extends ChangeNotifier {
   final ApiService _apiService = ApiService();
+  final SharedPreferences? _prefs;
   final List<SystemUpdate> _updates = [];
   bool _isLoading = false;
 
@@ -13,12 +15,28 @@ class UpdatesProvider extends ChangeNotifier {
   SystemUpdate? _selectedUpdate;
   final Set<String> _seenUpdateIds = {};
 
+  UpdatesProvider({SharedPreferences? prefs}) : _prefs = prefs {
+    _loadSeenUpdates();
+  }
+
+  void _loadSeenUpdates() {
+    if (_prefs != null) {
+      final list = _prefs.getStringList('seen_update_ids') ?? [];
+      _seenUpdateIds.addAll(list);
+    }
+  }
+
+  void _saveSeenUpdates() {
+    _prefs?.setStringList('seen_update_ids', _seenUpdateIds.toList());
+  }
+
   SystemUpdate? get selectedUpdate => _selectedUpdate;
 
   void selectUpdate(SystemUpdate? update) {
     _selectedUpdate = update;
     if (update != null) {
       _seenUpdateIds.add(update.id);
+      _saveSeenUpdates();
     }
     notifyListeners();
   }
@@ -27,6 +45,7 @@ class UpdatesProvider extends ChangeNotifier {
 
   void markUpdateSeen(String id) {
     _seenUpdateIds.add(id);
+    _saveSeenUpdates();
     notifyListeners();
   }
 

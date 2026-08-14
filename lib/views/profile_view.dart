@@ -245,9 +245,69 @@ class _ProfileViewState extends State<ProfileView> {
                     contentPadding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
                     leading: const Icon(Icons.logout, color: Colors.redAccent, size: 28),
                     title: const Text('Logout', style: TextStyle(color: Colors.redAccent, fontSize: 16)),
-                    onTap: () {
-                      context.read<UserSessionProvider>().logout();
-                      context.go('/auth');
+                    onTap: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (dialogCtx) {
+                          return AlertDialog(
+                            backgroundColor: isDark ? const Color(0xFF1D222B) : Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(
+                                color: isDark ? const Color(0xFF2A3942) : const Color(0xFFDFE5E7),
+                                width: 1,
+                              ),
+                            ),
+                            title: Text(
+                              'Logout',
+                              style: TextStyle(
+                                color: isDark ? const Color(0xFFE9EDEF) : const Color(0xFF111B21),
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            content: Text(
+                              'Are you sure you want to log out?',
+                              style: TextStyle(
+                                color: isDark ? const Color(0xFF8696A0) : const Color(0xFF667781),
+                                fontSize: 14,
+                              ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(dialogCtx).pop(false),
+                                child: Text(
+                                  'Cancel',
+                                  style: TextStyle(
+                                    color: isDark ? const Color(0xFF8696A0) : const Color(0xFF667781),
+                                  ),
+                                ),
+                              ),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.redAccent,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                ),
+                                onPressed: () => Navigator.of(dialogCtx).pop(true),
+                                child: const Text(
+                                  'Logout',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+
+                      if (confirm == true && context.mounted) {
+                        context.read<UserSessionProvider>().logout();
+                        context.go('/auth');
+                      }
                     },
                   ),
                   

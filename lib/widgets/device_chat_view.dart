@@ -416,17 +416,30 @@ class _DeviceChatViewState extends State<DeviceChatView> {
                     icon: Icon(Icons.arrow_back, color: textPrimaryColor),
                     onPressed: widget.onBack,
                   ),
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: accentGreen,
-                  backgroundImage: widget.device.imageUrl != null
-                      ? NetworkImage(widget.device.imageUrl!)
-                      : null,
-                  child: widget.device.imageUrl == null
-                      ? ClipOval(
-                          child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
-                        )
-                      : null,
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: widget.device.imageUrl != null
+                        ? Colors.transparent
+                        : (isDark ? const Color(0xFF2A3942) : Colors.white),
+                    shape: BoxShape.circle,
+                  ),
+                  padding: widget.device.imageUrl != null ? EdgeInsets.zero : const EdgeInsets.all(4),
+                  child: ClipOval(
+                    child: widget.device.imageUrl != null
+                        ? Image.network(
+                            widget.device.imageUrl!,
+                            width: 36,
+                            height: 36,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: Image.asset('assets/images/logo.png', fit: BoxFit.contain),
+                            ),
+                          )
+                        : Image.asset('assets/images/logo.png', fit: BoxFit.contain),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

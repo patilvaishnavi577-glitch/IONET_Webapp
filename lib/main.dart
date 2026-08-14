@@ -39,9 +39,9 @@ class _IonetOnboardingAppState extends State<IonetOnboardingApp> {
     super.initState();
     _sessionProvider = UserSessionProvider(prefs: widget.prefs);
     _deviceProvider = DeviceProvider();
-    _themeProvider = ThemeProvider();
+    _themeProvider = ThemeProvider(prefs: widget.prefs);
     _knowledgeProvider = KnowledgeProvider();
-    _updatesProvider = UpdatesProvider();
+    _updatesProvider = UpdatesProvider(prefs: widget.prefs);
     _router = AppRouter.createRouter(_sessionProvider);
   }
 

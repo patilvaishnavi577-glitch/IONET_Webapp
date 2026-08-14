@@ -169,8 +169,8 @@ class ApiService {
   }
 
   /// POST /api/v1/devices
-  /// Registers a new device.
-  Future<bool> createDevice({
+  /// Registers a new device. Returns null on success, or error message on failure.
+  Future<String?> createDevice({
     required String token,
     required String deviceId,
     required String deviceName,
@@ -189,12 +189,18 @@ class ApiService {
         }),
       );
 
+      final body = jsonDecode(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return true;
+        if (body is Map && body['success'] == true) {
+          return null;
+        }
       }
-      return false;
+      if (body is Map && body.containsKey('message')) {
+        return body['message']?.toString();
+      }
+      return 'Failed to add device';
     } catch (_) {
-      return false;
+      return 'Connection error occurred';
     }
   }
 

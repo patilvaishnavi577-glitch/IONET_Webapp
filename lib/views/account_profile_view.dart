@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 
@@ -79,13 +80,26 @@ class _AccountProfileViewState extends State<AccountProfileView> {
   }
 
   Future<void> _saveChanges(UserSessionProvider sessionProvider) async {
+    final name = _nameController.text.trim();
+    final phone = _phoneController.text.trim();
+
+    if (name.isEmpty) {
+      ToastService.show(context, 'Name cannot be empty.', isError: true);
+      return;
+    }
+
+    if (phone.isNotEmpty && phone.length != 10) {
+      ToastService.show(context, 'Mobile number must be exactly 10 digits.', isError: true);
+      return;
+    }
+
     setState(() {
       _isSaving = true;
     });
     
     final success = await sessionProvider.updateProfile(
-      name: _nameController.text.trim(),
-      mobileNumber: _phoneController.text.trim(),
+      name: name,
+      mobileNumber: phone,
     );
     
     if (mounted) {
@@ -96,29 +110,55 @@ class _AccountProfileViewState extends State<AccountProfileView> {
     }
   }
 
-  Widget _buildTextField(String label, IconData icon, TextEditingController? controller, {bool readOnly = false, String? initialValue, TextInputType keyboardType = TextInputType.text}) {
+  Widget _buildTextField(
+    String label,
+    IconData icon,
+    TextEditingController? controller, {
+    bool readOnly = false,
+    String? initialValue,
+    TextInputType keyboardType = TextInputType.text,
+    List<TextInputFormatter>? inputFormatters,
+  }) {
     final themeProvider = context.watch<ThemeProvider>();
     final isDark = themeProvider.isDarkMode;
     
-    final inputBg = isDark ? const Color(0xFF202C33) : const Color(0xFFF0F2F5);
+    final inputBg = isDark ? const Color(0xFF202C33) : Colors.white;
     final textSecondary = isDark ? const Color(0xFF8696A0) : const Color(0xFF667781);
+    final primaryTextColor = isDark ? const Color(0xFFE9EDEF) : const Color(0xFF111B21);
+    final accentGreen = isDark ? const Color(0xFF00A884) : const Color(0xFF008069);
     
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       decoration: BoxDecoration(
         color: inputBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? const Color(0xFF2A3942) : const Color(0xFFDFE5E7)),
+        border: Border.all(
+          color: isDark ? const Color(0xFF2A3942) : const Color(0xFFDFE5E7),
+          width: 1.5,
+        ),
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                )
+              ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: TextStyle(color: textSecondary, fontSize: 12),
+            style: TextStyle(
+              color: accentGreen,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Row(
             children: [
               Icon(icon, color: textSecondary, size: 20),
@@ -128,18 +168,22 @@ class _AccountProfileViewState extends State<AccountProfileView> {
                     ? Text(
                         initialValue ?? '',
                         style: TextStyle(
-                          color: textSecondary,
+                          color: primaryTextColor,
                           fontSize: 16,
+                          fontWeight: FontWeight.w500,
                         ),
                       )
                     : TextField(
                         controller: controller,
                         keyboardType: keyboardType,
+                        inputFormatters: inputFormatters,
                         style: TextStyle(
-                          color: isDark ? const Color(0xFFE9EDEF) : const Color(0xFF111B21),
+                          color: primaryTextColor,
                           fontSize: 16,
+                          fontWeight: FontWeight.w500,
                         ),
                         decoration: const InputDecoration(
+                          filled: false,
                           isDense: true,
                           contentPadding: EdgeInsets.zero,
                           border: InputBorder.none,
@@ -237,7 +281,16 @@ class _AccountProfileViewState extends State<AccountProfileView> {
                   // Fields
                   _buildTextField('Email', Icons.email_outlined, null, readOnly: true, initialValue: session.email),
                   _buildTextField('Name', Icons.person_outline, _nameController),
-                  _buildTextField('Mobile Number', Icons.phone_outlined, _phoneController, keyboardType: TextInputType.phone),
+                  _buildTextField(
+                    'Mobile Number',
+                    Icons.phone_outlined,
+                    _phoneController,
+                    keyboardType: TextInputType.phone,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(10),
+                    ],
+                  ),
 
                   const SizedBox(height: 30),
 

@@ -69,7 +69,12 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
               controller: _nameController,
               keyboardType: TextInputType.name,
               enabled: !isLoading,
-              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppTheme.textPrimary
+                    : AppTheme.textPrimaryLight,
+                fontSize: 16,
+              ),
               decoration: const InputDecoration(
                 labelText: 'Name',
                 hintText: 'Name',
@@ -92,7 +97,12 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
               controller: _mobileController,
               keyboardType: TextInputType.phone,
               enabled: !isLoading,
-              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppTheme.textPrimary
+                    : AppTheme.textPrimaryLight,
+                fontSize: 16,
+              ),
               inputFormatters: [
                 FilteringTextInputFormatter.digitsOnly,
                 LengthLimitingTextInputFormatter(10),

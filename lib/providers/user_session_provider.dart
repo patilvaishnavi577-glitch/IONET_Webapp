@@ -37,6 +37,7 @@ class UserSessionProvider extends ChangeNotifier {
       final id = profile['id']?.toString() ?? profile['_id']?.toString();
       final name = profile['name']?.toString() ?? '';
       final phone = profile['phoneNumber']?.toString() ?? '';
+      final email = profile['email']?.toString() ?? '';
       final avatar = profile['profilePictureUrl']?.toString() ??
           profile['profilePicture']?.toString() ??
           '';
@@ -44,6 +45,7 @@ class UserSessionProvider extends ChangeNotifier {
       _session = _session.copyWith(
         fullName: name,
         mobileNumber: phone,
+        email: email,
         profilePictureUrl: _formatAvatarUrl(avatar),
         userId: id,
       );
@@ -123,6 +125,7 @@ class UserSessionProvider extends ChangeNotifier {
       final id = profile?['id']?.toString() ?? profile?['_id']?.toString();
       final name = profile?['name']?.toString() ?? '';
       final phone = profile?['phoneNumber']?.toString() ?? '';
+      final email = profile?['email']?.toString() ?? '';
       final avatar = profile?['profilePictureUrl']?.toString() ??
           profile?['profilePicture']?.toString() ??
           '';
@@ -133,6 +136,7 @@ class UserSessionProvider extends ChangeNotifier {
         isNewUser: false,
         fullName: name,
         mobileNumber: phone,
+        email: email.isNotEmpty ? email : null,
         profilePictureUrl: _formatAvatarUrl(avatar),
         isAuthenticated: true,
         sessionStartTime: DateTime.now(),

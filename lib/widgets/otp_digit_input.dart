@@ -101,10 +101,12 @@ class _OtpDigitInputState extends State<OtpDigitInput> {
               keyboardType: TextInputType.number,
               textAlign: TextAlign.center,
               maxLength: 1,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppTheme.textPrimary
+                    : AppTheme.textPrimaryLight,
               ),
               inputFormatters: [
                 FilteringTextInputFormatter.digitsOnly,
@@ -114,7 +116,12 @@ class _OtpDigitInputState extends State<OtpDigitInput> {
                 contentPadding: EdgeInsets.zero,
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppTheme.cardBorder, width: 1.5),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppTheme.cardBorder
+                        : AppTheme.cardBorderLight,
+                    width: 1.5,
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),

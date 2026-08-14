@@ -18,6 +18,7 @@ import '../views/updates_view.dart';
 import '../widgets/device_chat_view.dart';
 import '../widgets/device_tile.dart';
 import '../widgets/story_player.dart';
+import '../utils/toast_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -67,143 +68,181 @@ class _HomeScreenState extends State<HomeScreen> {
 
     showDialog(
       context: context,
-      builder: (dialogContext) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: Container(
-            padding: const EdgeInsets.all(24.0),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1D222B),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppTheme.cardBorder, width: 1),
-            ),
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Add Device',
-                    style: TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w500,
+      builder: (dialogContext) {
+        bool isSubmitting = false;
+        return StatefulBuilder(
+          builder: (dialogCtx, setDialogState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: Container(
+                  padding: const EdgeInsets.all(24.0),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1D222B) : Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: isDark ? AppTheme.cardBorder : AppTheme.cardBorderLight,
+                      width: 1,
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  TextFormField(
-                    controller: deviceIdController,
-                    style: const TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 15,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Device ID',
-                      hintText: 'Enter device ID',
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
-                    ],
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) {
-                        return 'Please enter Device ID';
-                      }
-                      if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(val.trim())) {
-                        return 'Special characters not allowed';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 18),
-                  TextFormField(
-                    controller: deviceNameController,
-                    style: const TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 15,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Device Name',
-                      hintText: 'Enter device name',
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9 ]')),
-                    ],
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) {
-                        return 'Please enter Device Name';
-                      }
-                      if (!RegExp(r'^[a-zA-Z0-9 ]+$').hasMatch(val.trim())) {
-                        return 'Special characters not allowed';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 28),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.of(dialogContext).pop(),
-                        child: const Text(
-                          'Cancel',
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Add Device',
                           style: TextStyle(
-                            color: AppTheme.textSecondary,
-                            fontSize: 14,
+                            color: isDark ? AppTheme.textPrimary : AppTheme.textPrimaryLight,
+                            fontSize: 22,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2B3240),
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size(100, 44),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
+                        const SizedBox(height: 24),
+                        TextFormField(
+                          controller: deviceIdController,
+                          enabled: !isSubmitting,
+                          style: TextStyle(
+                            color: isDark ? AppTheme.textPrimary : AppTheme.textPrimaryLight,
+                            fontSize: 15,
                           ),
+                          decoration: const InputDecoration(
+                            labelText: 'Device ID',
+                            hintText: 'Enter device ID',
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+                          ],
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return 'Please enter Device ID';
+                            }
+                            if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(val.trim())) {
+                              return 'Special characters not allowed';
+                            }
+                            return null;
+                          },
                         ),
-                        onPressed: () {
-                          if (formKey.currentState?.validate() ?? false) {
-                            final deviceId = deviceIdController.text.trim();
-                            final deviceName = deviceNameController.text.trim();
-
-                            final token = context
-                                .read<UserSessionProvider>()
-                                .session
-                                .token;
-                            if (token != null) {
-                              context.read<DeviceProvider>().addDevice(
-                                token: token,
-                                deviceId: deviceId,
-                                deviceName: deviceName,
-                              );
+                        const SizedBox(height: 18),
+                        TextFormField(
+                          controller: deviceNameController,
+                          enabled: !isSubmitting,
+                          style: TextStyle(
+                            color: isDark ? AppTheme.textPrimary : AppTheme.textPrimaryLight,
+                            fontSize: 15,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: 'Device Name',
+                            hintText: 'Enter device name',
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9 ]')),
+                          ],
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return 'Please enter Device Name';
                             }
-
-                            Navigator.of(dialogContext).pop();
-
-                            final isDesktop =
-                                MediaQuery.of(context).size.width > 768;
-                            if (!isDesktop) {
-                              setState(() {
-                                _activeNavIndex = 0;
-                                _showMobileChat = true;
-                              });
+                            if (!RegExp(r'^[a-zA-Z0-9 ]+$').hasMatch(val.trim())) {
+                              return 'Special characters not allowed';
                             }
-                          }
-                        },
-                        child: const Text('Submit'),
-                      ),
-                    ],
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 28),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: isSubmitting ? null : () => Navigator.of(dialogContext).pop(),
+                              child: Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  color: isDark ? AppTheme.textSecondary : AppTheme.textSecondaryLight,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: isDark ? const Color(0xFF2B3240) : const Color(0xFF008069),
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size(100, 44),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                              ),
+                              onPressed: isSubmitting
+                                  ? null
+                                  : () async {
+                                      if (formKey.currentState?.validate() ?? false) {
+                                        final deviceId = deviceIdController.text.trim();
+                                        final deviceName = deviceNameController.text.trim();
+
+                                        final token = context
+                                            .read<UserSessionProvider>()
+                                            .session
+                                            .token;
+                                        if (token != null) {
+                                          setDialogState(() {
+                                            isSubmitting = true;
+                                          });
+
+                                          final error = await context.read<DeviceProvider>().addDevice(
+                                            token: token,
+                                            deviceId: deviceId,
+                                            deviceName: deviceName,
+                                          );
+
+                                          if (error == null) {
+                                            if (context.mounted) {
+                                              Navigator.of(dialogContext).pop();
+                                              ToastService.show(context, 'Device added successfully!');
+                                              final isDesktop = MediaQuery.of(context).size.width > 768;
+                                              if (!isDesktop) {
+                                                setState(() {
+                                                  _activeNavIndex = 0;
+                                                  _showMobileChat = true;
+                                                });
+                                              }
+                                            }
+                                          } else {
+                                            setDialogState(() {
+                                              isSubmitting = false;
+                                            });
+                                            if (context.mounted) {
+                                              ToastService.show(context, error, isError: true);
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                              child: isSubmitting
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Text('Submit'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
-        ),
-      ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -983,127 +1022,38 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // 1. Centered Card Container
-                Container(
-                  width: 380,
-                  padding: const EdgeInsets.all(28),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF202C33) : Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: isDark
-                          ? const Color(0xFF2A3942)
-                          : const Color(0xFFE2E8F0),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
-                        blurRadius: 15,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                // IONET Symbol (Logo)
+                Image.asset(
+                  'assets/images/logo.png',
+                  height: 120,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 32),
+
+                // Title
+                Text(
+                  'IONET',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: textPrimaryColor,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
                   ),
-                  child: Column(
-                    children: [
-                      // Styled stacked illustration
-                      SizedBox(
-                        width: 140,
-                        height: 100,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Icon(
-                              Icons.laptop_chromebook_rounded,
-                              size: 80,
-                              color: isDark
-                                  ? const Color(0xFF8696A0)
-                                  : const Color(0xFF64748B),
-                            ),
-                            Positioned(
-                              right: 18,
-                              bottom: 12,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isDark
-                                      ? const Color(0xFF111B21)
-                                      : Colors.white,
-                                  borderRadius: BorderRadius.circular(5),
-                                  border: Border.all(
-                                    color: isDark
-                                        ? const Color(0xFF8696A0)
-                                        : const Color(0xFF64748B),
-                                    width: 1.5,
-                                  ),
-                                ),
-                                child: Icon(
-                                  Icons.phone_android_rounded,
-                                  size: 16,
-                                  color: isDark
-                                      ? const Color(0xFF00A884)
-                                      : const Color(0xFF008069),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
+                ),
+                const SizedBox(height: 12),
 
-                      // Title
-                      Text(
-                        'Download IONET for Mobile',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: textPrimaryColor,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-
-                      // Subtitle
-                      Text(
-                        'Get extra features like device monitoring, screen sharing and remote commands.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: textSecondaryColor,
-                          fontSize: 13,
-                          height: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Download button
-                      ElevatedButton(
-                        onPressed: () {},
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isDark
-                              ? const Color(0xFF00A884)
-                              : const Color(0xFF008069),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 32,
-                            vertical: 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                        ),
-                        child: const Text(
-                          'Download',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
+                // Subtitle
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Text(
+                    'Select a device from the left panel to view status, monitor logs, and execute remote commands in real-time.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: textSecondaryColor,
+                      fontSize: 14,
+                      height: 1.6,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 48),

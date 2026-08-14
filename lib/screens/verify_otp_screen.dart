@@ -141,7 +141,12 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
             TextFormField(
               initialValue: userEmail,
               readOnly: true,
-              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppTheme.textPrimary
+                    : AppTheme.textPrimaryLight,
+                fontSize: 16,
+              ),
               decoration: const InputDecoration(
                 labelText: 'Email',
                 prefixIcon: Icon(Icons.email_outlined, size: 22),
@@ -155,7 +160,13 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
               keyboardType: TextInputType.number,
               enabled: !isLoading,
               autofocus: true,
-              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16, letterSpacing: 2),
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppTheme.textPrimary
+                    : AppTheme.textPrimaryLight,
+                fontSize: 16,
+                letterSpacing: 2,
+              ),
               inputFormatters: [
                 FilteringTextInputFormatter.digitsOnly,
               ],
@@ -211,10 +222,12 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
               child: _canResend
                   ? TextButton(
                       onPressed: isLoading ? null : _handleResendCode,
-                      child: const Text(
+                      child: Text(
                         'Resend OTP',
                         style: TextStyle(
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppTheme.textSecondary
+                              : AppTheme.textSecondaryLight,
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
                         ),
@@ -222,8 +235,10 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
                     )
                   : Text(
                       'Resend in ${_formatTime(_secondsRemaining)}',
-                      style: const TextStyle(
-                        color: AppTheme.textMuted,
+                      style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppTheme.textMuted
+                            : AppTheme.textMutedLight,
                         fontSize: 13,
                       ),
                     ),
