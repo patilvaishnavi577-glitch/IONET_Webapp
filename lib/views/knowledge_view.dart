@@ -10,6 +10,8 @@ import '../providers/user_session_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/toast_service.dart';
 import 'channel_feed_view.dart';
+import 'help_view.dart';
+import 'support_bot_view.dart';
 
 class KnowledgeView extends StatefulWidget {
   const KnowledgeView({super.key});
@@ -19,6 +21,8 @@ class KnowledgeView extends StatefulWidget {
 }
 
 class _KnowledgeViewState extends State<KnowledgeView> {
+  bool _showHelp = false;
+
   @override
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDarkMode;
@@ -28,6 +32,25 @@ class _KnowledgeViewState extends State<KnowledgeView> {
     final isDesktop = mediaQuery.size.width > 768;
 
     final selectedChannel = knowledgeProvider.selectedChannel;
+
+    if (_showHelp) {
+      return HelpView(
+        onBack: () {
+          setState(() {
+            _showHelp = false;
+          });
+        },
+      );
+    }
+
+    // On mobile, if support bot is selected, show its full-screen view
+    if (!isDesktop && knowledgeProvider.showSupportBot) {
+      return SupportBotView(
+        onBack: () {
+          knowledgeProvider.setShowSupportBot(false);
+        },
+      );
+    }
 
     // On mobile, if a channel is selected, show its full-screen feed view
     if (!isDesktop && selectedChannel != null) {
@@ -44,131 +67,150 @@ class _KnowledgeViewState extends State<KnowledgeView> {
     final findChannels = allChannels.where((c) => !knowledgeProvider.isFollowing(c.id)).toList();
 
     final textPrimaryColor = isDark ? AppTheme.textPrimary : AppTheme.textPrimaryLight;
-    final borderCol = isDark ? AppTheme.cardBorder : AppTheme.cardBorderLight;
     final sidebarBg = isDark ? const Color(0xFF111B21) : Colors.white;
 
     return Container(
       color: sidebarBg,
-      child: Column(
+      child: Stack(
         children: [
-          // Header Bar
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-            child: Row(
-              children: [
-                Text(
-                  'Support',
-                  style: TextStyle(
-                    color: isDark ? const Color(0xFFE9EDEF) : const Color(0xFF111B21),
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                  ),
+          Column(
+            children: [
+              // Header Bar
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+                child: Row(
+                  children: [
+                    Text(
+                      'Support',
+                      style: TextStyle(
+                        color: isDark ? const Color(0xFFE9EDEF) : const Color(0xFF111B21),
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: Stack(
+                        alignment: Alignment.center,
+                        children: const [
+                          FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white, size: 32),
+                          FaIcon(FontAwesomeIcons.whatsapp, color: Color(0xFF25D366), size: 28),
+                        ],
+                      ),
+                      onPressed: () async {
+                        final url = Uri.parse('https://whatsapp.com/channel/0029VbBPglwATRSi0Zibax3w');
+                        if (await canLaunchUrl(url)) {
+                          await launchUrl(url, mode: LaunchMode.externalApplication);
+                        }
+                      },
+                    ),
+                  ],
                 ),
-                const Spacer(),
-                IconButton(
-                  icon: Stack(
-                    alignment: Alignment.center,
-                    children: const [
-                      FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white, size: 32),
-                      FaIcon(FontAwesomeIcons.whatsapp, color: Color(0xFF25D366), size: 28),
+              ),
+
+              // Channel Lists Scrollable Body
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (followedChannels.isNotEmpty) ...[
+                        Text(
+                          'Following',
+                          style: TextStyle(
+                            color: textPrimaryColor,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ...followedChannels.map((channel) {
+                          final isSelectedOnDesktop = isDesktop && selectedChannel?.id == channel.id;
+                          return _buildChannelTile(
+                            channel: channel,
+                            isDark: isDark,
+                            isSelected: isSelectedOnDesktop,
+                            isFollowing: true,
+                            onTap: () {
+                              knowledgeProvider.selectChannel(channel.id);
+                            },
+                            onFollowToggle: () async {
+                              final token = context.read<UserSessionProvider>().session.token;
+                              if (token == null) return;
+                              
+                              final error = await knowledgeProvider.toggleFollow(channel.id, token);
+                              if (error != null) {
+                                if (!context.mounted) return;
+                                String messageText = 'Failed to update follow status: $error';
+                                if (error.toLowerCase().contains('limit')) {
+                                  messageText = 'Follow limit exceeded! You cannot follow more channels.';
+                                }
+                                ToastService.show(context, messageText, isError: true);
+                              }
+                            },
+                          );
+                        }),
+                        const SizedBox(height: 16),
+                      ],
+
+                      if (findChannels.isNotEmpty) ...[
+                        Text(
+                          'Find Channels',
+                          style: TextStyle(
+                            color: textPrimaryColor,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ...findChannels.map((channel) {
+                          final isSelectedOnDesktop = isDesktop && selectedChannel?.id == channel.id;
+                          return _buildChannelTile(
+                            channel: channel,
+                            isDark: isDark,
+                            isSelected: isSelectedOnDesktop,
+                            isFollowing: false,
+                            onTap: () {
+                              knowledgeProvider.selectChannel(channel.id);
+                            },
+                            onFollowToggle: () async {
+                              final token = context.read<UserSessionProvider>().session.token;
+                              if (token == null) return;
+                              
+                              final error = await knowledgeProvider.toggleFollow(channel.id, token);
+                              if (error != null) {
+                                if (!context.mounted) return;
+                                String messageText = 'Failed to update follow status: $error';
+                                if (error.toLowerCase().contains('limit')) {
+                                  messageText = 'Follow limit exceeded! You cannot follow more channels.';
+                                }
+                                ToastService.show(context, messageText, isError: true);
+                              }
+                            },
+                          );
+                        }),
+                      ],
                     ],
                   ),
-                  onPressed: () async {
-                    final url = Uri.parse('https://whatsapp.com/channel/0029VbBPglwATRSi0Zibax3w');
-                    if (await canLaunchUrl(url)) {
-                      await launchUrl(url, mode: LaunchMode.externalApplication);
-                    }
-                  },
                 ),
-              ],
-            ),
-          ),
-
-          // Channel Lists Scrollable Body
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (followedChannels.isNotEmpty) ...[
-                    Text(
-                      'Following',
-                      style: TextStyle(
-                        color: textPrimaryColor,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ...followedChannels.map((channel) {
-                      final isSelectedOnDesktop = isDesktop && selectedChannel?.id == channel.id;
-                      return _buildChannelTile(
-                        channel: channel,
-                        isDark: isDark,
-                        isSelected: isSelectedOnDesktop,
-                        isFollowing: true,
-                        onTap: () {
-                          knowledgeProvider.selectChannel(channel.id);
-                        },
-                        onFollowToggle: () async {
-                          final token = context.read<UserSessionProvider>().session.token;
-                          if (token == null) return;
-                          final messenger = ScaffoldMessenger.of(context);
-                          
-                          final error = await knowledgeProvider.toggleFollow(channel.id, token);
-                          if (error != null) {
-                            String messageText = 'Failed to update follow status: $error';
-                            if (error.toLowerCase().contains('limit')) {
-                              messageText = 'Follow limit exceeded! You cannot follow more channels.';
-                            }
-                            ToastService.show(context, messageText, isError: true);
-                          }
-                        },
-                      );
-                    }),
-                    const SizedBox(height: 16),
-                  ],
-
-                  if (findChannels.isNotEmpty) ...[
-                    Text(
-                      'Find Channels',
-                      style: TextStyle(
-                        color: textPrimaryColor,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ...findChannels.map((channel) {
-                      final isSelectedOnDesktop = isDesktop && selectedChannel?.id == channel.id;
-                      return _buildChannelTile(
-                        channel: channel,
-                        isDark: isDark,
-                        isSelected: isSelectedOnDesktop,
-                        isFollowing: false,
-                        onTap: () {
-                          knowledgeProvider.selectChannel(channel.id);
-                        },
-                        onFollowToggle: () async {
-                          final token = context.read<UserSessionProvider>().session.token;
-                          if (token == null) return;
-                          final messenger = ScaffoldMessenger.of(context);
-                          
-                          final error = await knowledgeProvider.toggleFollow(channel.id, token);
-                          if (error != null) {
-                            String messageText = 'Failed to update follow status: $error';
-                            if (error.toLowerCase().contains('limit')) {
-                              messageText = 'Follow limit exceeded! You cannot follow more channels.';
-                            }
-                            ToastService.show(context, messageText, isError: true);
-                          }
-                        },
-                      );
-                    }),
-                  ],
-                ],
               ),
+            ],
+          ),
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: FloatingActionButton(
+              onPressed: () {
+                setState(() {
+                  _showHelp = true;
+                });
+              },
+              backgroundColor: const Color(0xFF00695C),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(Icons.help_outline, color: Colors.white, size: 28),
             ),
           ),
         ],

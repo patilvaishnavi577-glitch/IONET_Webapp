@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../providers/theme_provider.dart';
+import '../providers/knowledge_provider.dart';
 import '../theme/app_theme.dart';
-import 'support_bot_view.dart';
 
 class HelpView extends StatefulWidget {
   final VoidCallback? onBack;
@@ -18,7 +17,6 @@ class HelpView extends StatefulWidget {
 }
 
 class _HelpViewState extends State<HelpView> {
-  bool _showBotChat = false;
   final List<bool> _expandedStates = [false, false, false, false];
 
   final List<Map<String, String>> _faqs = [
@@ -44,18 +42,8 @@ class _HelpViewState extends State<HelpView> {
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDarkMode;
 
-    if (_showBotChat) {
-      return SupportBotView(
-        onBack: () {
-          setState(() {
-            _showBotChat = false;
-          });
-        },
-      );
-    }
-
     return Container(
-      color: isDark ? const Color(0xFF0F1218) : const Color(0xFFF8FAFC),
+      color: isDark ? AppTheme.scaffoldBg : AppTheme.scaffoldBgLight,
       child: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
@@ -114,7 +102,7 @@ class _HelpViewState extends State<HelpView> {
                     padding: const EdgeInsets.only(bottom: 12.0),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF161A22) : Colors.white,
+                        color: isDark ? AppTheme.cardBg : AppTheme.cardBgLight,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: isDark ? AppTheme.cardBorder : AppTheme.cardBorderLight,
@@ -154,8 +142,11 @@ class _HelpViewState extends State<HelpView> {
                               ),
                             ),
                           ),
-                          if (isExpanded) ...[
-                            const Divider(height: 1, color: Color(0xFF2E3440)),
+                           if (isExpanded) ...[
+                            Divider(
+                              height: 1,
+                              color: isDark ? AppTheme.cardBorder : AppTheme.cardBorderLight,
+                            ),
                             Padding(
                               padding: const EdgeInsets.all(20.0),
                               child: Text(
@@ -190,7 +181,7 @@ class _HelpViewState extends State<HelpView> {
                 // Support Bot Tile Button (Screenshot 1)
                 Container(
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF161A22) : Colors.white,
+                    color: isDark ? AppTheme.cardBg : AppTheme.cardBgLight,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isDark ? AppTheme.cardBorder : AppTheme.cardBorderLight,
@@ -199,9 +190,7 @@ class _HelpViewState extends State<HelpView> {
                   ),
                   child: InkWell(
                     onTap: () {
-                      setState(() {
-                        _showBotChat = true;
-                      });
+                      context.read<KnowledgeProvider>().setShowSupportBot(true);
                     },
                     borderRadius: BorderRadius.circular(16),
                     child: Padding(
@@ -211,8 +200,8 @@ class _HelpViewState extends State<HelpView> {
                           Container(
                             width: 44,
                             height: 44,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF1D4ED8),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF00A884) : const Color(0xFF008069),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(

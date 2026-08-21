@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../config/api_config.dart';
 import '../providers/theme_provider.dart';
 import '../providers/user_session_provider.dart';
-import 'help_view.dart';
 import 'account_profile_view.dart';
 
 class ProfileView extends StatefulWidget {
@@ -16,7 +15,6 @@ class ProfileView extends StatefulWidget {
 }
 
 class _ProfileViewState extends State<ProfileView> {
-  bool _showHelp = false;
   bool _showAccountProfile = false;
 
   void _viewPhotoDialog(BuildContext context, String url) {
@@ -55,16 +53,6 @@ class _ProfileViewState extends State<ProfileView> {
 
   @override
   Widget build(BuildContext context) {
-    if (_showHelp) {
-      return HelpView(
-        onBack: () {
-          setState(() {
-            _showHelp = false;
-          });
-        },
-      );
-    }
-
     if (_showAccountProfile) {
       return AccountProfileView(
         onBack: () {
@@ -82,7 +70,6 @@ class _ProfileViewState extends State<ProfileView> {
 
     // WhatsApp Web Colors
     final bgColor = isDark ? const Color(0xFF111B21) : const Color(0xFFF0F2F5);
-    final headerColor = isDark ? const Color(0xFF202C33) : const Color(0xFF008069);
     final textPrimary = isDark ? const Color(0xFFE9EDEF) : const Color(0xFF111B21);
     final textSecondary = isDark ? const Color(0xFF8696A0) : const Color(0xFF667781);
     final dividerColor = isDark ? const Color(0xFF202C33) : const Color(0xFFE9EDEF);
@@ -220,21 +207,6 @@ class _ProfileViewState extends State<ProfileView> {
                     ),
                     onTap: () {
                       themeProvider.toggleTheme(!isDark);
-                    },
-                  ),
-                  
-                  Divider(color: dividerColor, height: 1, thickness: 1),
-
-                  // Help Option
-                  ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                    leading: Icon(Icons.help_outline, color: textSecondary, size: 28),
-                    title: Text('Help', style: TextStyle(color: textPrimary, fontSize: 16)),
-                    subtitle: Text('Help center, contact us, privacy policy', style: TextStyle(color: textSecondary, fontSize: 13)),
-                    onTap: () {
-                      setState(() {
-                        _showHelp = true;
-                      });
                     },
                   ),
                   

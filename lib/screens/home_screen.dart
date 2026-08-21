@@ -15,6 +15,7 @@ import '../views/channel_feed_view.dart';
 import '../views/knowledge_view.dart';
 import '../views/profile_view.dart';
 import '../views/updates_view.dart';
+import '../views/support_bot_view.dart';
 import '../widgets/device_chat_view.dart';
 import '../widgets/device_tile.dart';
 import '../widgets/story_player.dart';
@@ -628,6 +629,14 @@ class _HomeScreenState extends State<HomeScreen> {
               )
             : _buildEmptyState(isDark);
       case 2:
+        final knowledgeProvider = context.watch<KnowledgeProvider>();
+        if (knowledgeProvider.showSupportBot) {
+          return SupportBotView(
+            onBack: () {
+              context.read<KnowledgeProvider>().setShowSupportBot(false);
+            },
+          );
+        }
         return selectedChannel != null
             ? ChannelFeedView(
                 channel: selectedChannel,

@@ -8,11 +8,13 @@ class KnowledgeProvider extends ChangeNotifier {
   final Set<String> _followedChannelIds = {};
   String? _selectedChannelId;
   bool _isLoading = false;
+  bool _showSupportBot = false;
 
   List<Channel> get channels => _channels;
   Set<String> get followedChannelIds => _followedChannelIds;
   String? get selectedChannelId => _selectedChannelId;
   bool get isLoading => _isLoading;
+  bool get showSupportBot => _showSupportBot;
 
   Channel? get selectedChannel {
     if (_selectedChannelId == null) return null;
@@ -57,6 +59,17 @@ class KnowledgeProvider extends ChangeNotifier {
 
   void selectChannel(String? id) {
     _selectedChannelId = id;
+    if (id != null) {
+      _showSupportBot = false;
+    }
+    notifyListeners();
+  }
+
+  void setShowSupportBot(bool value) {
+    _showSupportBot = value;
+    if (value) {
+      _selectedChannelId = null;
+    }
     notifyListeners();
   }
 
