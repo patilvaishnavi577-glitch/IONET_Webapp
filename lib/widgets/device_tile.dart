@@ -104,19 +104,6 @@ class DeviceTile extends StatelessWidget {
                 ),
               ),
 
-              // Timestamp and Unread Badge
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '07:29', // Mock timestamp to match design
-                    style: TextStyle(
-                      color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
-                      fontSize: 11,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-
               // Unread Badge (if any)
               if (device.unreadCount > 0)
                 Container(
@@ -134,8 +121,6 @@ class DeviceTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                ],
-              ),
             ],
           ),
         ),

@@ -75,6 +75,14 @@ class _IonetOnboardingAppState extends State<IonetOnboardingApp> {
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProv.themeMode,
             routerConfig: _router,
+            builder: (context, routerChild) {
+              return MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: TextScaler.linear(themeProv.fontScaleFactor),
+                ),
+                child: routerChild ?? const SizedBox.shrink(),
+              );
+            },
           );
         },
       ),

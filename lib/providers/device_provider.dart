@@ -1,3 +1,4 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -7,6 +8,115 @@ import '../services/api_service.dart';
 import '../config/api_config.dart';
 
 class DeviceProvider extends ChangeNotifier {
+
+  static Map<String, dynamic> _extractDataPreservingDuplicates(dynamic rawData, Map<String, dynamic>? fallbackData) {
+    if (rawData == null) return fallbackData ?? {};
+    final String rawJson = rawData is String
+        ? rawData
+        : (rawData is List<int> ? utf8.decode(rawData) : rawData.toString());
+
+    try {
+      final dataKeyMatch = RegExp(r'"data"\s*:\s*\{').firstMatch(rawJson);
+      if (dataKeyMatch == null) {
+        return fallbackData ?? {};
+      }
+
+      final openBraceIndex = rawJson.indexOf('{', dataKeyMatch.start);
+      if (openBraceIndex == -1) {
+        return fallbackData ?? {};
+      }
+
+      int depth = 0;
+      int closeBraceIndex = -1;
+      bool inString = false;
+      bool isEscaped = false;
+
+      for (int i = openBraceIndex; i < rawJson.length; i++) {
+        final char = rawJson[i];
+        if (isEscaped) {
+          isEscaped = false;
+          continue;
+        }
+        if (char == '\\') {
+          isEscaped = true;
+          continue;
+        }
+        if (char == '"') {
+          inString = !inString;
+          continue;
+        }
+        if (!inString) {
+          if (char == '{') {
+            depth++;
+          } else if (char == '}') {
+            depth--;
+            if (depth == 0) {
+              closeBraceIndex = i;
+              break;
+            }
+          }
+        }
+      }
+
+      if (closeBraceIndex == -1) {
+        return fallbackData ?? {};
+      }
+
+      final dataContent = rawJson.substring(openBraceIndex + 1, closeBraceIndex);
+
+      final RegExp pairRegex = RegExp(r'"([^"\\]*(?:\\.[^"\\]*)*)"\s*:\s*("([^"\\]*(?:\\.[^"\\]*)*)"|[0-9.]+|true|false|null)');
+      final matches = pairRegex.allMatches(dataContent).toList();
+
+      if (matches.isEmpty) {
+        return fallbackData ?? {};
+      }
+
+      final Map<String, int> totalOccurrences = {};
+      for (final match in matches) {
+        String key = match.group(1) ?? '';
+        key = key.replaceAll(r'\"', '"');
+        totalOccurrences[key] = (totalOccurrences[key] ?? 0) + 1;
+      }
+
+      final Map<String, dynamic> result = {};
+      final Map<String, int> currentCounts = {};
+
+      for (final match in matches) {
+        String key = match.group(1) ?? '';
+        key = key.replaceAll(r'\"', '"');
+
+        final rawVal = match.group(2) ?? '';
+        dynamic val;
+        if (rawVal.startsWith('"') && rawVal.endsWith('"')) {
+          val = rawVal.substring(1, rawVal.length - 1).replaceAll(r'\"', '"');
+        } else if (rawVal == 'true') {
+          val = true;
+        } else if (rawVal == 'false') {
+          val = false;
+        } else if (rawVal == 'null') {
+          val = null;
+        } else {
+          val = num.tryParse(rawVal) ?? rawVal;
+        }
+
+        currentCounts[key] = (currentCounts[key] ?? 0) + 1;
+        final currentIdx = currentCounts[key]!;
+
+        String finalKey = key;
+        if ((totalOccurrences[key] ?? 0) > 1) {
+          finalKey = '$key $currentIdx';
+        }
+
+        result[finalKey] = val;
+      }
+
+      return result;
+    } catch (e) {
+      debugPrint('Error extracting duplicate keys from raw JSON: $e');
+      return fallbackData ?? {};
+    }
+  }
+
   final ApiService _apiService = ApiService();
   final List<Device> _devices = [];
   String? _selectedDeviceId;
@@ -20,6 +130,9 @@ class DeviceProvider extends ChangeNotifier {
   Timer? _watchdogTimer;
   bool _isReconnecting = false;
   Timer? _reconnectTimer;
+  final Map<String, Map<String, dynamic>> _latestDeviceStatusData = {};
+  final Map<String, List<QuickCommand>> _customQuickCommands = {};
+  final Map<String, List<QuickCommand>> _deviceQuickCommands = {};
 
   List<Device> get devices {
     if (_searchQuery.isEmpty) {
@@ -43,6 +156,107 @@ class DeviceProvider extends ChangeNotifier {
   String get searchQuery => _searchQuery;
   bool get isLoading => _isLoading;
 
+  Map<String, dynamic>? getLatestDeviceStatusData(String deviceId) =>
+      _latestDeviceStatusData[deviceId];
+  List<QuickCommand> getDeviceCommands(String deviceId) =>
+      _deviceQuickCommands[deviceId] ?? [];
+  List<QuickCommand> getCustomCommands(String deviceId) =>
+      _customQuickCommands[deviceId] ?? [];
+
+  List<QuickCommand> getQuickCommands(String deviceId) {
+    // Only return live commands received dynamically from device
+    final deviceCmds = _deviceQuickCommands[deviceId] ?? [];
+    if (deviceCmds.isNotEmpty) return deviceCmds;
+    // Fallback if indexed under id or deviceId
+    for (final entry in _deviceQuickCommands.entries) {
+      if (entry.key == deviceId && entry.value.isNotEmpty) {
+        return entry.value;
+      }
+    }
+    return [];
+  }
+
+  void _syncDeviceQuickCommands(String deviceId) {
+    final idx = _devices.indexWhere((d) => d.id == deviceId || d.deviceId == deviceId);
+    if (idx != -1) {
+      final dev = _devices[idx];
+      _devices[idx] = dev.copyWith(quickCommands: getQuickCommands(dev.deviceId));
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadCustomCommands(String deviceId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final List<String>? saved = prefs.getStringList('custom_commands_$deviceId');
+      if (saved != null) {
+        final List<QuickCommand> loaded = saved.map((s) {
+          final decoded = jsonDecode(s);
+          return QuickCommand.fromJson(Map<String, dynamic>.from(decoded as Map));
+        }).toList();
+        _customQuickCommands[deviceId] = loaded;
+        _syncDeviceQuickCommands(deviceId);
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error loading custom commands: $e');
+    }
+  }
+
+  Future<void> addDeviceQuickCommand(String deviceId, QuickCommand command) async {
+    if (!_customQuickCommands.containsKey(deviceId)) {
+      _customQuickCommands[deviceId] = [];
+    }
+    if (_customQuickCommands[deviceId]!.any((c) => c.message == command.message)) return;
+    _customQuickCommands[deviceId]!.add(command);
+    _syncDeviceQuickCommands(deviceId);
+    notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final listJson = _customQuickCommands[deviceId]!.map((c) => jsonEncode(c.toJson())).toList();
+      await prefs.setStringList('custom_commands_$deviceId', listJson);
+    } catch (e) {
+      debugPrint('Error saving custom command: $e');
+    }
+  }
+
+  Future<void> editDeviceQuickCommand(String deviceId, QuickCommand oldCmd, QuickCommand newCmd) async {
+    if (_customQuickCommands.containsKey(deviceId)) {
+      final list = _customQuickCommands[deviceId]!;
+      final index = list.indexWhere((c) => c.message == oldCmd.message && c.label == oldCmd.label);
+      if (index != -1) {
+        list[index] = newCmd;
+        _syncDeviceQuickCommands(deviceId);
+        notifyListeners();
+
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final listJson = list.map((c) => jsonEncode(c.toJson())).toList();
+          await prefs.setStringList('custom_commands_$deviceId', listJson);
+        } catch (e) {
+          debugPrint('Error editing custom command: $e');
+        }
+      }
+    }
+  }
+
+  Future<void> deleteDeviceQuickCommand(String deviceId, QuickCommand command) async {
+    if (_customQuickCommands.containsKey(deviceId)) {
+      _customQuickCommands[deviceId]!.removeWhere((c) => c.message == command.message);
+      _syncDeviceQuickCommands(deviceId);
+      notifyListeners();
+
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final listJson = _customQuickCommands[deviceId]!.map((c) => jsonEncode(c.toJson())).toList();
+        await prefs.setStringList('custom_commands_$deviceId', listJson);
+      } catch (e) {
+        debugPrint('Error deleting custom command: $e');
+      }
+    }
+  }
+
   void _setLoading(bool val) {
     _isLoading = val;
     notifyListeners();
@@ -62,12 +276,14 @@ class DeviceProvider extends ChangeNotifier {
           isOnline: false,
           statusMessage: 'Connecting...',
           messages: [], // Clear chat history on new connection
-          quickCommands: const [QuickCommand(label: 'Info', message: 'Info')], // Reset available commands
+          quickCommands: const [], // Live commands only
         );
       }
       notifyListeners();
 
       // 2. Add a brief artificial delay so the user clearly sees the 'Connecting...' state
+      loadCustomCommands(device.deviceId);
+      loadCustomCommands(device.id);
       Future.delayed(const Duration(milliseconds: 800), () {
         if (_selectedDeviceId == id) { // Ensure user hasn't switched devices again
           _connectWebSocket(device.id, device.deviceId);
@@ -406,7 +622,81 @@ class DeviceProvider extends ChangeNotifier {
   }
 
   /// Send message in active chat thread
-  void sendMessage(String text) {
+  
+  void sendConfig(String deviceId, Map<String, dynamic> configData) {
+    final lines = configData.entries.map((e) => '${e.key}: ${e.value}').join('\n');
+    final displayText = 'Sent Configuration:\n$lines';
+
+    final userMsg = ChatMessage(
+      id: 'user_${DateTime.now().millisecondsSinceEpoch}',
+      text: displayText,
+      command: '/config',
+      sender: MessageSender.user,
+      timestamp: DateTime.now(),
+    );
+
+    final index = _devices.indexWhere((d) => d.id == deviceId || d.deviceId == deviceId);
+    if (index != -1) {
+      final device = _devices[index];
+      final updatedMessages = List<ChatMessage>.from(device.messages)..add(userMsg);
+      _devices[index] = device.copyWith(messages: updatedMessages);
+      notifyListeners();
+
+      _setDeviceOnline(device.id, true);
+      _resetWatchdog(device.id);
+
+      final payload = jsonEncode({
+        'command': '/config',
+        'data': configData,
+      });
+
+      if (_webSocketChannel != null) {
+        try {
+          _webSocketChannel!.sink.add(payload);
+        } catch (_) {}
+      }
+    }
+  }
+
+  void sendWifiSetup(String deviceId, String ssid, String password) {
+    final maskedPass = password.isEmpty ? '(none)' : '•' * password.length;
+    final displayText = 'Sent Wi-Fi Setup:\nSSID: $ssid\nPASS: $maskedPass';
+
+    final userMsg = ChatMessage(
+      id: 'user_${DateTime.now().millisecondsSinceEpoch}',
+      text: displayText,
+      command: '/set-up_wifi',
+      sender: MessageSender.user,
+      timestamp: DateTime.now(),
+    );
+
+    final index = _devices.indexWhere((d) => d.id == deviceId || d.deviceId == deviceId);
+    if (index != -1) {
+      final device = _devices[index];
+      final updatedMessages = List<ChatMessage>.from(device.messages)..add(userMsg);
+      _devices[index] = device.copyWith(messages: updatedMessages);
+      notifyListeners();
+
+      _setDeviceOnline(device.id, true);
+      _resetWatchdog(device.id);
+
+      final payload = jsonEncode({
+        'command': '/set-up_wifi',
+        'data': {
+          'SSID': ssid,
+          'PASS': password,
+        },
+      });
+
+      if (_webSocketChannel != null) {
+        try {
+          _webSocketChannel!.sink.add(payload);
+        } catch (_) {}
+      }
+    }
+  }
+
+  void sendMessage(String text, {String? displayText}) {
     if (_selectedDeviceId == null) return;
     final index = _devices.indexWhere((d) => d.id == _selectedDeviceId);
     if (index == -1) return;
@@ -414,7 +704,8 @@ class DeviceProvider extends ChangeNotifier {
     final device = _devices[index];
     final userMsg = ChatMessage(
       id: 'user_${DateTime.now().millisecondsSinceEpoch}',
-      text: text,
+      text: displayText ?? text,
+      command: text,
       sender: MessageSender.user,
       timestamp: DateTime.now(),
     );
@@ -574,10 +865,58 @@ class DeviceProvider extends ChangeNotifier {
               _resetWatchdog(dbId);
               _setDeviceOnline(dbId, true);
 
+              final rawMsg = message.toString();
+              final parsedData = _extractDataPreservingDuplicates(
+                rawMsg,
+                parsed['data'] is Map ? Map<String, dynamic>.from(parsed['data'] as Map) : null,
+              );
+              if (parsedData.isNotEmpty) {
+                _latestDeviceStatusData[hwId] = parsedData;
+                _latestDeviceStatusData[dbId] = parsedData;
+              } else if (parsed.containsKey('data') && parsed['data'] is Map) {
+                final dMap = Map<String, dynamic>.from(parsed['data'] as Map);
+                _latestDeviceStatusData[hwId] = dMap;
+                _latestDeviceStatusData[dbId] = dMap;
+              }
+
+              final incomingCmds = parsed['availableCommands'] ?? parsed['additionalCommands'];
+              if (incomingCmds != null) {
+                final List<QuickCommand> dynCmds = [];
+                void extractCmd(String cKey, String cDesc) {
+                  final k = cKey.trim();
+                  if (k.isNotEmpty) {
+                    String lbl = cDesc.trim();
+                    if (lbl.isEmpty) {
+                      lbl = k.startsWith('/') ? k.substring(1) : k;
+                      lbl = lbl.replaceAll('_', ' ');
+                    }
+                    dynCmds.add(QuickCommand(label: lbl, message: k));
+                  }
+                }
+                if (incomingCmds is List) {
+                  for (final item in incomingCmds) {
+                    if (item is Map) {
+                      extractCmd((item['command'] ?? item['message'] ?? '').toString(), (item['description'] ?? item['label'] ?? '').toString());
+                    }
+                  }
+                } else if (incomingCmds is Map) {
+                  incomingCmds.forEach((k, v) => extractCmd(k.toString(), v?.toString() ?? ''));
+                }
+                if (dynCmds.isNotEmpty) {
+                  _deviceQuickCommands[hwId] = dynCmds;
+                  _deviceQuickCommands[dbId] = dynCmds;
+                  _syncDeviceQuickCommands(hwId);
+                }
+              }
+
+              if (parsed['command'] == '/config' && parsed['success'] == true) {
+                sendMessage('/status', displayText: 'Get device status');
+              }
+
               if (type == 'heartbeat') {
                 // Heartbeat message resets watchdog and keeps device online
               } else {
-                _addDeviceReplyMessage(dbId, message.toString());
+                _addDeviceReplyMessage(dbId, rawMsg);
               }
             } else {
               _resetWatchdog(dbId);
@@ -688,23 +1027,16 @@ class DeviceProvider extends ChangeNotifier {
           dataMap = parsed;
         }
 
-        final configKeys = {'deviceid', 'firmwareversion', 'availablecommands', 'type', 'success', 'message'};
         final List<String> lines = [];
-        
-        lines.add('Device Id : ${device.deviceId}');
-        final firmware = parsed['firmwareVersion']?.toString() ?? dataMap?['firmwareVersion']?.toString() ?? parsed['firmware']?.toString() ?? dataMap?['firmware']?.toString();
-        if (firmware != null && firmware.isNotEmpty) {
-          lines.add('Firmware: $firmware');
-        }
-        
+        final configKeys = {
+          'deviceid', 'firmwareversion', 'availablecommands', 'additionalcommands',
+          'type', 'success', 'message', 'command', 'timestamp', 'id', 'version', 'lastseen'
+        };
+
+        // Strictly extract only telemetry values from dataMap
         if (dataMap != null) {
           final keys = dataMap.keys.map((k) => k.toString()).toList();
-          final filteredKeys = keys.where((k) {
-            if (!isNested) {
-              return !configKeys.contains(k.toLowerCase());
-            }
-            return true;
-          }).toList();
+          final filteredKeys = keys.where((k) => !configKeys.contains(k.toLowerCase())).toList();
 
           if (filteredKeys.isNotEmpty) {
             // Sort keys numerically if numbers are present, otherwise alphabetically
@@ -734,52 +1066,45 @@ class DeviceProvider extends ChangeNotifier {
           }
         }
         
-        // 2. Dynamically extract quick action commands to show at bottom input bar
-        if (parsed.containsKey('availableCommands')) {
-          final cmds = parsed['availableCommands'];
+        // 2. Dynamically extract quick action commands to refill Quick Commands section (NOT in chat bubble)
+        final rawCmds = parsed['availableCommands'] ?? parsed['additionalCommands'];
+        if (rawCmds != null) {
           final parsedCommands = <QuickCommand>[];
-          final commandDisplayLines = <Map<String, String>>[];
 
-          void _processCmd(String cmdKey, String cmdDesc) {
-            if (cmdKey.startsWith('/')) {
-              commandDisplayLines.add({'cmd': cmdKey, 'desc': cmdDesc});
-              String rawLabel = cmdKey.substring(1).replaceAll('_', ' ');
-              rawLabel = rawLabel.replaceAllMapped(RegExp(r'([a-zA-Z])(\d)'), (m) => '${m[1]} ${m[2]}');
-              final label = rawLabel.isNotEmpty
-                  ? rawLabel[0].toUpperCase() + rawLabel.substring(1)
-                  : rawLabel;
-              parsedCommands.add(QuickCommand(label: label, message: cmdKey));
+          void processCmd(String cmdKey, String cmdDesc) {
+            final cleanCmd = cmdKey.trim();
+            if (cleanCmd.isNotEmpty) {
+              String rawLabel = cmdDesc.trim();
+              if (rawLabel.isEmpty) {
+                rawLabel = cleanCmd.startsWith('/') ? cleanCmd.substring(1) : cleanCmd;
+                rawLabel = rawLabel.replaceAll('_', ' ');
+                rawLabel = rawLabel.replaceAllMapped(RegExp(r'([a-zA-Z])(\d)'), (m) => '${m[1]} ${m[2]}');
+                rawLabel = rawLabel.isNotEmpty
+                    ? rawLabel[0].toUpperCase() + rawLabel.substring(1)
+                    : rawLabel;
+              }
+              parsedCommands.add(QuickCommand(label: rawLabel, message: cleanCmd));
             }
           }
 
-          if (cmds is List) {
-            for (final item in cmds) {
+          if (rawCmds is List) {
+            for (final item in rawCmds) {
               if (item is Map) {
-                _processCmd(item['command']?.toString() ?? '', item['description']?.toString() ?? '');
+                final cKey = (item['command'] ?? item['message'] ?? '').toString();
+                final cDesc = (item['description'] ?? item['label'] ?? item['title'] ?? '').toString();
+                processCmd(cKey, cDesc);
               }
             }
-          } else if (cmds is Map) {
-            cmds.forEach((key, val) {
-              _processCmd(key.toString(), val?.toString() ?? '');
+          } else if (rawCmds is Map) {
+            rawCmds.forEach((key, val) {
+              processCmd(key.toString(), val?.toString() ?? '');
             });
           }
 
           if (parsedCommands.isNotEmpty) {
             updatedCommands = parsedCommands;
-            
-            if (lines.isNotEmpty) {
-              lines.add(''); // Blank line before commands
-              int maxLen = 0;
-              for (var c in commandDisplayLines) {
-                if (c['cmd']!.length > maxLen) maxLen = c['cmd']!.length;
-              }
-              for (var c in commandDisplayLines) {
-                final paddedCmd = c['cmd']!.padRight(maxLen);
-                final desc = c['desc']!.isNotEmpty ? ' : ${c['desc']}' : '';
-                lines.add('$paddedCmd$desc');
-              }
-              textToShow = lines.join('\n');
-            }
+            _deviceQuickCommands[device.deviceId] = parsedCommands;
+            _deviceQuickCommands[device.id] = parsedCommands;
           }
         }
       }
@@ -796,6 +1121,15 @@ class DeviceProvider extends ChangeNotifier {
     }
 
     if (shouldAddMessage) {
+      if (updatedDevice.messages.isNotEmpty) {
+        final lastMsg = updatedDevice.messages.last;
+        if (!lastMsg.isUser &&
+            lastMsg.text == textToShow &&
+            DateTime.now().difference(lastMsg.timestamp).inMilliseconds.abs() < 2000) {
+          return; // Deduplicate rapid message
+        }
+      }
+
       final replyMsg = ChatMessage(
         id: 'ws_reply_${DateTime.now().millisecondsSinceEpoch}',
         text: textToShow,
@@ -817,6 +1151,16 @@ class DeviceProvider extends ChangeNotifier {
     _webSocketSubscription?.cancel();
     _webSocketSubscription = null;
     _webSocketChannel = null;
+  }
+
+  
+  void reconnectCurrentDevice() {
+    if (_selectedDeviceId == null) return;
+    final index = _devices.indexWhere((d) => d.id == _selectedDeviceId);
+    if (index != -1) {
+      final dev = _devices[index];
+      _connectWebSocket(dev.id, dev.deviceId);
+    }
   }
 
   void _disconnectWebSocket() {

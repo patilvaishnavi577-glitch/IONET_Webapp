@@ -187,26 +187,35 @@ class _ProfileViewState extends State<ProfileView> {
                   
                   Divider(color: dividerColor, height: 1, thickness: 1),
 
-                  // Toggle Theme Option
+                  // Theme Option
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
                     leading: Icon(
-                      isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                      Icons.brightness_6_outlined,
                       color: textSecondary,
                       size: 28,
                     ),
-                    title: Text('Toggle Theme', style: TextStyle(color: textPrimary, fontSize: 16)),
-                    subtitle: Text(isDark ? 'Dark Mode' : 'Light Mode', style: TextStyle(color: textSecondary, fontSize: 13)),
-                    trailing: Switch(
-                      value: isDark,
-                      activeTrackColor: labelColor.withValues(alpha: 0.5),
-                      activeThumbColor: labelColor,
-                      onChanged: (val) {
-                        themeProvider.toggleTheme(val);
-                      },
-                    ),
+                    title: Text('Theme', style: TextStyle(color: textPrimary, fontSize: 16)),
+                    subtitle: Text(themeProvider.themeModeName, style: TextStyle(color: textSecondary, fontSize: 13)),
                     onTap: () {
-                      themeProvider.toggleTheme(!isDark);
+                      _showThemeDialog(context, themeProvider, isDark);
+                    },
+                  ),
+                  
+                  Divider(color: dividerColor, height: 1, thickness: 1),
+
+                  // Font Size Option
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                    leading: Icon(
+                      Icons.format_size_rounded,
+                      color: textSecondary,
+                      size: 28,
+                    ),
+                    title: Text('Font Size', style: TextStyle(color: textPrimary, fontSize: 16)),
+                    subtitle: Text(themeProvider.fontSizeName, style: TextStyle(color: textSecondary, fontSize: 13)),
+                    onTap: () {
+                      _showFontSizeDialog(context, themeProvider, isDark);
                     },
                   ),
                   
@@ -305,4 +314,159 @@ class _ProfileViewState extends State<ProfileView> {
       ),
     );
   }
+
+  void _showThemeDialog(BuildContext context, ThemeProvider themeProvider, bool isDark) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        final cardBg = isDark ? const Color(0xFF1D222B) : Colors.white;
+        final textPrimary = isDark ? const Color(0xFFE9EDEF) : const Color(0xFF111B21);
+        final labelColor = isDark ? const Color(0xFF00A884) : const Color(0xFF008069);
+
+        return AlertDialog(
+          backgroundColor: cardBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: isDark ? const Color(0xFF2A3942) : const Color(0xFFDFE5E7),
+              width: 1,
+            ),
+          ),
+          title: Text(
+            'Choose Theme',
+            style: TextStyle(
+              color: textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RadioListTile<ThemeMode>(
+                activeColor: labelColor,
+                title: Text('System Default', style: TextStyle(color: textPrimary, fontSize: 15)),
+                value: ThemeMode.system,
+                groupValue: themeProvider.themeMode,
+                onChanged: (val) {
+                  if (val != null) {
+                    themeProvider.setThemeMode(val);
+                    Navigator.pop(dialogCtx);
+                  }
+                },
+              ),
+              RadioListTile<ThemeMode>(
+                activeColor: labelColor,
+                title: Text('Light', style: TextStyle(color: textPrimary, fontSize: 15)),
+                value: ThemeMode.light,
+                groupValue: themeProvider.themeMode,
+                onChanged: (val) {
+                  if (val != null) {
+                    themeProvider.setThemeMode(val);
+                    Navigator.pop(dialogCtx);
+                  }
+                },
+              ),
+              RadioListTile<ThemeMode>(
+                activeColor: labelColor,
+                title: Text('Dark', style: TextStyle(color: textPrimary, fontSize: 15)),
+                value: ThemeMode.dark,
+                groupValue: themeProvider.themeMode,
+                onChanged: (val) {
+                  if (val != null) {
+                    themeProvider.setThemeMode(val);
+                    Navigator.pop(dialogCtx);
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: Text('Cancel', style: TextStyle(color: labelColor)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showFontSizeDialog(BuildContext context, ThemeProvider themeProvider, bool isDark) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        final cardBg = isDark ? const Color(0xFF1D222B) : Colors.white;
+        final textPrimary = isDark ? const Color(0xFFE9EDEF) : const Color(0xFF111B21);
+        final labelColor = isDark ? const Color(0xFF00A884) : const Color(0xFF008069);
+
+        return AlertDialog(
+          backgroundColor: cardBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: isDark ? const Color(0xFF2A3942) : const Color(0xFFDFE5E7),
+              width: 1,
+            ),
+          ),
+          title: Text(
+            'Choose Font Size',
+            style: TextStyle(
+              color: textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RadioListTile<String>(
+                activeColor: labelColor,
+                title: Text('Small', style: TextStyle(color: textPrimary, fontSize: 15)),
+                value: 'Small',
+                groupValue: themeProvider.fontSize,
+                onChanged: (val) {
+                  if (val != null) {
+                    themeProvider.setFontSize(val);
+                    Navigator.pop(dialogCtx);
+                  }
+                },
+              ),
+              RadioListTile<String>(
+                activeColor: labelColor,
+                title: Text('Medium', style: TextStyle(color: textPrimary, fontSize: 15)),
+                value: 'Medium',
+                groupValue: themeProvider.fontSize,
+                onChanged: (val) {
+                  if (val != null) {
+                    themeProvider.setFontSize(val);
+                    Navigator.pop(dialogCtx);
+                  }
+                },
+              ),
+              RadioListTile<String>(
+                activeColor: labelColor,
+                title: Text('Large', style: TextStyle(color: textPrimary, fontSize: 15)),
+                value: 'Large',
+                groupValue: themeProvider.fontSize,
+                onChanged: (val) {
+                  if (val != null) {
+                    themeProvider.setFontSize(val);
+                    Navigator.pop(dialogCtx);
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: Text('Cancel', style: TextStyle(color: labelColor)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
 }

@@ -3,12 +3,14 @@ enum MessageSender { user, device }
 class ChatMessage {
   final String id;
   final String text;
+  final String? command;
   final MessageSender sender;
   final DateTime timestamp;
 
   const ChatMessage({
     required this.id,
     required this.text,
+    this.command,
     required this.sender,
     required this.timestamp,
   });
@@ -25,11 +27,24 @@ class ChatMessage {
 class QuickCommand {
   final String label;
   final String message;
+  final bool isCustom;
 
   const QuickCommand({
     required this.label,
     required this.message,
+    this.isCustom = false,
   });
+
+  Map<String, dynamic> toJson() => {
+    'label': label,
+    'message': message,
+  };
+
+  factory QuickCommand.fromJson(Map<String, dynamic> json) => QuickCommand(
+    label: json['label'] as String? ?? '',
+    message: json['message'] as String? ?? '',
+    isCustom: true,
+  );
 }
 
 class SharedUser {
@@ -74,9 +89,7 @@ class Device {
     required this.lastActiveTime,
     this.isOnline = true,
     this.unreadCount = 0,
-    this.quickCommands = const [
-      QuickCommand(label: 'Info', message: 'Info'),
-    ],
+    this.quickCommands = const [],
     this.messages = const [],
     this.imageUrl,
     this.isShared = false,

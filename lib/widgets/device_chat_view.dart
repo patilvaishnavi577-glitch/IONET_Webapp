@@ -61,7 +61,7 @@ class _DeviceChatViewState extends State<DeviceChatView> {
     });
   }
 
-  void _handleSend([String? prefilledCommand]) {
+  void _handleSend([String? prefilledCommand, String? displayText]) {
     if (!widget.device.isOnline) return;
     final text = prefilledCommand ?? _textController.text;
     if (text.trim().isEmpty) return;
@@ -70,144 +70,200 @@ class _DeviceChatViewState extends State<DeviceChatView> {
       _textController.clear();
     }
 
-    context.read<DeviceProvider>().sendMessage(text);
+    context.read<DeviceProvider>().sendMessage(text, displayText: displayText);
     _scrollToBottom();
   }
 
 
 
-  void _showAddCommandDialog(BuildContext context, bool isDark) {
-    final formKey = GlobalKey<FormState>();
-    final labelController = TextEditingController();
-    final messageController = TextEditingController();
+  
+  void _showConfigurationDialog(BuildContext context, DeviceProvider provider) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return DeviceConfigDialog(
+          provider: provider,
+          device: widget.device,
+        );
+      },
+    );
+  }
+
+  void _showWifiSetupDialog(BuildContext context, DeviceProvider provider) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return WifiSetupDialog(
+          provider: provider,
+          device: widget.device,
+        );
+      },
+    );
+  }
+
+  void _showCommandPaletteBottomSheet(
+    BuildContext context,
+    DeviceProvider provider,
+    bool isDark,
+    Color accentGreen,
+  ) {
+    final devId = widget.device.deviceId.isNotEmpty ? widget.device.deviceId : widget.device.id;
+    final allCommands = provider.getQuickCommands(devId);
+    final customCommands = provider.getCustomCommands(devId);
 
     showDialog(
       context: context,
-      builder: (dialogContext) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360),
-          child: Container(
-            padding: const EdgeInsets.all(24.0),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1F2C34) : Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: isDark ? AppTheme.cardBorder : AppTheme.cardBorderLight,
-                width: 1,
+      builder: (dialogCtx) {
+        final cardBg = isDark ? const Color(0xFF1F2C34) : Colors.white;
+        final textPrimary = isDark ? AppTheme.textPrimary : AppTheme.textPrimaryLight;
+        final textSecondary = isDark ? AppTheme.textSecondary : AppTheme.textSecondaryLight;
+
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440, maxHeight: 600),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: cardBg,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark ? AppTheme.cardBorder : AppTheme.cardBorderLight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.25),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-            ),
-            child: Form(
-              key: formKey,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Add Command',
-                    style: TextStyle(
-                      color: isDark ? AppTheme.textPrimary : AppTheme.textPrimaryLight,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  TextFormField(
-                    controller: labelController,
-                    style: TextStyle(
-                      color: isDark ? AppTheme.textPrimary : AppTheme.textPrimaryLight,
-                      fontSize: 15,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Display Label',
-                      hintText: 'e.g. Status, Reset',
-                    ),
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) {
-                        return 'Please enter display label';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: messageController,
-                    style: TextStyle(
-                      color: isDark ? AppTheme.textPrimary : AppTheme.textPrimaryLight,
-                      fontSize: 15,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Command Message',
-                      hintText: 'Payload message to send',
-                    ),
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) {
-                        return 'Please enter command message';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      TextButton(
-                        onPressed: () => Navigator.of(dialogContext).pop(),
-                        child: Text(
-                          'Cancel',
-                          style: TextStyle(
-                            color: isDark ? const Color(0xFF00A884) : const Color(0xFF008069),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: accentGreen.withOpacity(0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.bolt_rounded, color: accentGreen, size: 22),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Quick Commands',
+                        style: TextStyle(
+                          color: textPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      GestureDetector(
-                        onTap: () {
-                          if (formKey.currentState?.validate() ?? false) {
-                            final label = labelController.text.trim();
-                            final message = messageController.text.trim();
+                      const Spacer(),
 
-                            context.read<DeviceProvider>().addQuickCommand(
-                                  widget.device.id,
-                                  label,
-                                  message,
-                                );
-                            Navigator.of(dialogContext).pop();
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF0D221F) : const Color(0xFFE8F5E9),
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: Text(
-                            'Save',
-                            style: TextStyle(
-                              color: isDark ? const Color(0xFF00A884) : const Color(0xFF008069),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        color: textSecondary,
+                        onPressed: () => Navigator.pop(dialogCtx),
                       ),
                     ],
+                  ),
+                  const Divider(height: 20),
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (allCommands.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 24.0),
+                              child: Center(
+                                child: Text(
+                                  'No live commands received from device yet.\nSend /status to request available device commands.',
+                                  style: TextStyle(color: textSecondary, fontSize: 13),
+                                ),
+                              ),
+                            )
+                          else
+                            ...allCommands.map((cmd) {
+                              final isCustom = customCommands.any((c) => c.message == cmd.message);
+                              IconData icon = Icons.chevron_right_rounded;
+                              final lowerLabel = cmd.label.toLowerCase();
+                              final lowerMsg = cmd.message.toLowerCase();
+
+                              return Container(
+                                margin: const EdgeInsets.symmetric(vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0xFF2A3942).withOpacity(0.5) : const Color(0xFFF7F9FA),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.06),
+                                  ),
+                                ),
+                                child: ListTile(
+                                  dense: true,
+                                  leading: Icon(icon, color: accentGreen, size: 20),
+                                  title: Text(
+                                    cmd.label,
+                                    style: TextStyle(
+                                      color: textPrimary,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    cmd.message,
+                                    style: TextStyle(color: textSecondary, fontSize: 11),
+                                  ),
+                                  trailing: isCustom
+                                      ? Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              icon: Icon(Icons.edit_outlined, size: 16, color: textSecondary),
+                                              onPressed: () {
+                                                Navigator.pop(dialogCtx);
+                                                _showEditCustomDialog(context, cmd, isDark);
+                                              },
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.delete_outline, size: 16, color: Colors.redAccent),
+                                              onPressed: () {
+                                                provider.deleteDeviceQuickCommand(devId, cmd);
+                                                Navigator.pop(dialogCtx);
+                                              },
+                                            ),
+                                          ],
+                                        )
+                                      : const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: Colors.grey),
+                                  onTap: () {
+                                    Navigator.pop(dialogCtx);
+                                    _handleSend(cmd.message, cmd.label);
+                                  },
+                                ),
+                              );
+                            }),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
-  void _showEditCommandDialog(BuildContext context, int indexToEdit, QuickCommand cmd, bool isDark) {
+  void _showEditCustomDialog(BuildContext context, QuickCommand cmd, bool isDark) {
     final formKey = GlobalKey<FormState>();
     final labelController = TextEditingController(text: cmd.label);
     final messageController = TextEditingController(text: cmd.message);
+    final devId = widget.device.deviceId.isNotEmpty ? widget.device.deviceId : widget.device.id;
 
     showDialog(
       context: context,
@@ -232,132 +288,48 @@ class _DeviceChatViewState extends State<DeviceChatView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Edit Command',
+                    'Edit Custom Button',
                     style: TextStyle(
                       color: isDark ? AppTheme.textPrimary : AppTheme.textPrimaryLight,
-                      fontSize: 20,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  TextFormField(
-                    controller: labelController,
-                    style: TextStyle(
-                      color: isDark ? AppTheme.textPrimary : AppTheme.textPrimaryLight,
-                      fontSize: 15,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Display Label',
-                    ),
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) {
-                        return 'Please enter display label';
-                      }
-                      return null;
-                    },
-                  ),
                   const SizedBox(height: 16),
                   TextFormField(
-                    controller: messageController,
-                    style: TextStyle(
-                      color: isDark ? AppTheme.textPrimary : AppTheme.textPrimaryLight,
-                      fontSize: 15,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Command Message',
-                    ),
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) {
-                        return 'Please enter command message';
-                      }
-                      return null;
-                    },
+                    controller: labelController,
+                    decoration: const InputDecoration(labelText: 'Button Label'),
+                    validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: messageController,
+                    decoration: const InputDecoration(labelText: 'Command Text'),
+                    validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 20),
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       TextButton(
-                        onPressed: () async {
-                          final confirmed = await showDialog<bool>(
-                            context: context,
-                            builder: (dialogCtx) => AlertDialog(
-                              backgroundColor: Theme.of(context).cardColor,
-                              title: const Text('Delete Command'),
-                              content: const Text('Are you sure you want to delete this quick command?'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.of(dialogCtx).pop(false),
-                                  child: const Text('Cancel'),
-                                ),
-                                ElevatedButton(
-                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
-                                  onPressed: () => Navigator.of(dialogCtx).pop(true),
-                                  child: const Text('Delete'),
-                                ),
-                              ],
-                            ),
-                          );
-
-                          if (confirmed == true) {
-                            context.read<DeviceProvider>().deleteQuickCommand(
-                                  widget.device.id,
-                                  indexToEdit,
-                                );
-                            if (mounted) Navigator.of(dialogContext).pop();
-                          }
-                        },
-                        child: const Text(
-                          'Delete',
-                          style: TextStyle(
-                            color: Colors.redAccent,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        onPressed: () => Navigator.pop(dialogContext),
+                        child: const Text('Cancel'),
                       ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: () => Navigator.of(dialogContext).pop(),
-                        child: Text(
-                          'Cancel',
-                          style: TextStyle(
-                            color: isDark ? const Color(0xFF00A884) : const Color(0xFF008069),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      GestureDetector(
-                        onTap: () {
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () {
                           if (formKey.currentState?.validate() ?? false) {
-                            final label = labelController.text.trim();
-                            final message = messageController.text.trim();
-
-                            context.read<DeviceProvider>().editQuickCommand(
-                                  widget.device.id,
-                                  indexToEdit,
-                                  label,
-                                  message,
-                                );
-                            Navigator.of(dialogContext).pop();
+                            final newLabel = labelController.text.trim();
+                            final newMsg = messageController.text.trim();
+                            context.read<DeviceProvider>().editDeviceQuickCommand(
+                              devId,
+                              cmd,
+                              QuickCommand(label: newLabel, message: newMsg, isCustom: true),
+                            );
+                            Navigator.pop(dialogContext);
                           }
                         },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF0D221F) : const Color(0xFFE8F5E9),
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: Text(
-                            'Save',
-                            style: TextStyle(
-                              color: isDark ? const Color(0xFF00A884) : const Color(0xFF008069),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
+                        child: const Text('Save'),
                       ),
                     ],
                   ),
@@ -456,7 +428,11 @@ class _DeviceChatViewState extends State<DeviceChatView> {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Row(
+                      InkWell(
+                      onTap: widget.device.isOnline ? null : () {
+                        context.read<DeviceProvider>().reconnectCurrentDevice();
+                      },
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
@@ -470,25 +446,64 @@ class _DeviceChatViewState extends State<DeviceChatView> {
                             ),
                           ),
                           const SizedBox(width: 6),
-                          Text(
+                                                    Text(
                             widget.device.isOnline
                                 ? 'Online'
                                 : (widget.device.statusMessage == 'Connecting...'
                                     ? 'Connecting...'
                                     : (widget.device.lastActiveTime.isNotEmpty && widget.device.lastActiveTime != 'Never'
                                         ? 'Offline • ${widget.device.lastActiveTime}'
-                                        : 'Offline')),
+                                        : 'Offline • Tap to retry')),
                             style: TextStyle(
                               color: widget.device.isOnline ? const Color(0xFF2DD4BF) : (widget.device.statusMessage == 'Connecting...' ? Colors.orangeAccent : textSecondaryColor),
                               fontSize: 12,
+                              decoration: !widget.device.isOnline && widget.device.statusMessage != 'Connecting...'
+                                  ? TextDecoration.underline
+                                  : TextDecoration.none,
                             ),
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-
+              ),
+              if (!widget.device.isShared) ...[
+                PopupMenuButton<String>(
+                  icon: Icon(Icons.more_vert, color: textPrimaryColor),
+                  tooltip: 'Device Options',
+                  onSelected: (val) {
+                    final prov = context.read<DeviceProvider>();
+                    if (val == 'config') {
+                      _showConfigurationDialog(context, prov);
+                    } else if (val == 'wifi_setup') {
+                      _showWifiSetupDialog(context, prov);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem<String>(
+                      value: 'config',
+                      child: Row(
+                        children: [
+                          Icon(Icons.tune_rounded, size: 20, color: accentGreen),
+                          const SizedBox(width: 10),
+                          const Text('Configuration'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem<String>(
+                      value: 'wifi_setup',
+                      child: Row(
+                        children: [
+                          Icon(Icons.wifi_rounded, size: 20, color: accentGreen),
+                          const SizedBox(width: 10),
+                          const Text('Wi-Fi Setup'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -520,7 +535,7 @@ class _DeviceChatViewState extends State<DeviceChatView> {
           color: inputBarBg,
           child: Row(
             children: [
-              // STATUS Button
+                            // STATUS Button
               GestureDetector(
                 onTap: widget.device.isOnline ? () => _handleSend('/status') : null,
                 child: Container(
@@ -548,6 +563,7 @@ class _DeviceChatViewState extends State<DeviceChatView> {
                   ),
                 ),
               ),
+              
               const SizedBox(width: 12),
               Expanded(
                 child: TextField(
@@ -562,6 +578,14 @@ class _DeviceChatViewState extends State<DeviceChatView> {
                     filled: true,
                     fillColor: textInputFill,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    suffixIcon: IconButton(
+                      icon: Icon(Icons.bolt_rounded, color: accentGreen),
+                      tooltip: 'Quick Commands',
+                      onPressed: () {
+                        final provider = context.read<DeviceProvider>();
+                        _showCommandPaletteBottomSheet(context, provider, isDark, accentGreen);
+                      },
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(24),
                       borderSide: BorderSide.none,
@@ -630,8 +654,10 @@ class _DeviceChatViewState extends State<DeviceChatView> {
     final userBubbleColor = isDark ? const Color(0xFF005C4B) : const Color(0xFFD9FDD3);
     final deviceBubbleColor = isDark ? AppTheme.cardBg : Colors.white;
 
+    // Clean bubble text: filter out commands from message body
+    final filteredLines = msg.text.split('\n').where((l) => !l.trim().startsWith('/')).join('\n');
     final bubbleContent = CommandText(
-      text: msg.text,
+      text: filteredLines.isNotEmpty ? filteredLines : msg.text,
       isUser: isUser,
       isDark: isDark,
       accentGreen: accentGreen,
@@ -639,48 +665,75 @@ class _DeviceChatViewState extends State<DeviceChatView> {
       onCommandTap: (cmd) => _handleSend(cmd),
     );
 
+    final isResendable = isUser &&
+        !msg.text.startsWith('Sent Configuration:') &&
+        !msg.text.startsWith('Sent Wi-Fi Setup:');
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: Align(
         alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 400),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: isUser ? userBubbleColor : deviceBubbleColor,
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(18),
-              topRight: const Radius.circular(18),
-              bottomLeft: Radius.circular(isUser ? 18 : 4),
-              bottomRight: Radius.circular(isUser ? 4 : 18),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 3,
-                offset: const Offset(0, 1),
-              ),
-            ],
-          ),
-          child: IntrinsicWidth(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                bubbleContent,
-                const SizedBox(height: 4),
-                Align(
-                  alignment: Alignment.bottomRight,
-                  child: Text(
-                    msg.formattedTime,
-                    style: TextStyle(
-                      color: isUser
-                          ? (isDark ? Colors.white.withOpacity(0.7) : AppTheme.textSecondaryLight)
-                          : secondaryTextColor,
-                      fontSize: 10.5,
-                    ),
-                  ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: isResendable
+                ? () {
+                    final cmd = msg.command ?? msg.text;
+                    _handleSend(cmd, msg.text);
+                  }
+                : null,
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 400),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isUser ? userBubbleColor : deviceBubbleColor,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(18),
+                  topRight: const Radius.circular(18),
+                  bottomLeft: Radius.circular(isUser ? 18 : 4),
+                  bottomRight: Radius.circular(isUser ? 4 : 18),
                 ),
-              ],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: IntrinsicWidth(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    bubbleContent,
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isResendable) ...[
+                          Icon(
+                            Icons.replay_rounded,
+                            size: 11,
+                            color: isDark ? Colors.white.withOpacity(0.7) : AppTheme.textSecondaryLight,
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+                        Text(
+                          msg.formattedTime,
+                          style: TextStyle(
+                            color: isUser
+                                ? (isDark ? Colors.white.withOpacity(0.7) : AppTheme.textSecondaryLight)
+                                : secondaryTextColor,
+                            fontSize: 10.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -881,6 +934,355 @@ class _CommandTextState extends State<CommandText> {
         ),
         children: spans,
       ),
+    );
+  }
+}
+
+
+// -----------------------------------------------------------------------------
+// Device Configuration Dialog
+// -----------------------------------------------------------------------------
+
+class DeviceConfigDialog extends StatefulWidget {
+  final DeviceProvider provider;
+  final Device device;
+
+  const DeviceConfigDialog({
+    super.key,
+    required this.provider,
+    required this.device,
+  });
+
+  @override
+  State<DeviceConfigDialog> createState() => _DeviceConfigDialogState();
+}
+
+class _DeviceConfigDialogState extends State<DeviceConfigDialog> {
+  final List<ConfigItem> configItems = [];
+
+  @override
+  void initState() {
+    super.initState();
+    refillData();
+  }
+
+  void refillData() {
+    for (final item in configItems) {
+      item.dispose();
+    }
+    configItems.clear();
+
+    final devId = widget.device.deviceId.isNotEmpty ? widget.device.deviceId : widget.device.id;
+    final latestData = widget.provider.getLatestDeviceStatusData(devId) ??
+        widget.provider.getLatestDeviceStatusData(widget.device.id);
+
+    if (latestData != null && latestData.isNotEmpty) {
+      latestData.forEach((key, val) {
+        final isNA = key.toUpperCase().startsWith('NA');
+        configItems.add(ConfigItem(key: key, value: isNA ? '' : key));
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final item in configItems) {
+      item.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF00A884).withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.tune_rounded, color: Color(0xFF00A884), size: 20),
+          ),
+          const SizedBox(width: 10),
+          const Text('Device Configuration', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        ],
+      ),
+      content: SizedBox(
+        width: 420,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'TELEMETRY ITEMS',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.8,
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => setState(() => refillData()),
+                    icon: const Icon(Icons.refresh, size: 16),
+                    label: const Text('Reset', style: TextStyle(fontSize: 12)),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (configItems.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20.0),
+                  child: Center(
+                    child: Text(
+                      'No status configuration data available.\nPlease query device status in the chat first.',
+                      style: TextStyle(color: Colors.grey, fontSize: 13),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                )
+              else
+                ...configItems.map((item) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 14.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.key,
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: item.valueController,
+                          decoration: InputDecoration(
+                            hintText: 'Enter custom name for ${item.key}',
+                            hintStyle: TextStyle(
+                              fontSize: 12.5,
+                              color: isDark ? Colors.grey[500] : Colors.grey[400],
+                            ),
+                            suffixIcon: item.valueController.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear_rounded, size: 16),
+                                    onPressed: () {
+                                      setState(() {
+                                        item.valueController.clear();
+                                      });
+                                    },
+                                  )
+                                : null,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            isDense: true,
+                          ),
+                          style: const TextStyle(fontSize: 13.5),
+                          onChanged: (_) => setState(() {}),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: configItems.isEmpty
+              ? null
+              : () {
+                  final Map<String, dynamic> configData = {};
+                  for (final item in configItems) {
+                    final val = item.valueController.text.trim();
+                    configData[item.key] = val.isNotEmpty ? val : item.key;
+                  }
+
+                  final devId = widget.device.deviceId.isNotEmpty ? widget.device.deviceId : widget.device.id;
+                  widget.provider.sendConfig(devId, configData);
+                  Navigator.pop(context);
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Configuration command sent successfully')),
+                  );
+                },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF00A884),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          child: const Text('Send'),
+        ),
+      ],
+    );
+  }
+}
+
+class ConfigItem {
+  final String key;
+  final TextEditingController valueController;
+
+  ConfigItem({required this.key, required String value})
+      : valueController = TextEditingController(text: value);
+
+  void dispose() {
+    valueController.dispose();
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Wi-Fi Setup Dialog
+// -----------------------------------------------------------------------------
+
+class WifiSetupDialog extends StatefulWidget {
+  final DeviceProvider provider;
+  final Device device;
+
+  const WifiSetupDialog({
+    super.key,
+    required this.provider,
+    required this.device,
+  });
+
+  @override
+  State<WifiSetupDialog> createState() => _WifiSetupDialogState();
+}
+
+class _WifiSetupDialogState extends State<WifiSetupDialog> {
+  final _ssidController = TextEditingController();
+  final _passController = TextEditingController();
+  bool _obscurePassword = true;
+  String? _ssidError;
+
+  @override
+  void dispose() {
+    _ssidController.dispose();
+    _passController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return AlertDialog(
+      title: const Row(
+        children: [
+          Icon(Icons.wifi, color: Color(0xFF00A884)),
+          SizedBox(width: 8),
+          Text('Wi-Fi Setup'),
+        ],
+      ),
+      content: SizedBox(
+        width: 380,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Enter the Wi-Fi credentials to configure on your device.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _ssidController,
+                decoration: InputDecoration(
+                  labelText: 'Wi-Fi SSID',
+                  hintText: 'e.g. Home Network',
+                  prefixIcon: const Icon(Icons.wifi_rounded, size: 20),
+                  errorText: _ssidError,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+                onChanged: (val) {
+                  if (_ssidError != null && val.trim().isNotEmpty) {
+                    setState(() => _ssidError = null);
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _passController,
+                obscureText: _obscurePassword,
+                decoration: InputDecoration(
+                  labelText: 'Wi-Fi Password',
+                  hintText: 'Enter network password',
+                  prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      size: 20,
+                    ),
+                    onPressed: () {
+                      setState(() => _obscurePassword = !_obscurePassword);
+                    },
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            final ssid = _ssidController.text.trim();
+            final pass = _passController.text;
+
+            if (ssid.isEmpty) {
+              setState(() => _ssidError = 'SSID is required');
+              return;
+            }
+
+            final devId = widget.device.deviceId.isNotEmpty ? widget.device.deviceId : widget.device.id;
+            widget.provider.sendWifiSetup(devId, ssid, pass);
+            Navigator.pop(context);
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Wi-Fi setup command sent successfully')),
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF00A884),
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('Send'),
+        ),
+      ],
     );
   }
 }
