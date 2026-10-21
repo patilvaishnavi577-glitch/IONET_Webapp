@@ -841,6 +841,26 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                           iconColor: textSec,
                           textColor: textPri,
                         ),
+                        if (device.hardwareVersion != null && device.hardwareVersion!.isNotEmpty) ...[
+                          const Divider(height: 24),
+                          _buildDetailRow(
+                            icon: Icons.memory,
+                            title: 'Hardware Version',
+                            value: device.hardwareVersion!,
+                            iconColor: textSec,
+                            textColor: textPri,
+                          ),
+                        ],
+                        if (device.softwareVersion != null && device.softwareVersion!.isNotEmpty) ...[
+                          const Divider(height: 24),
+                          _buildDetailRow(
+                            icon: Icons.code,
+                            title: 'Software Version',
+                            value: device.softwareVersion!,
+                            iconColor: textSec,
+                            textColor: textPri,
+                          ),
+                        ],
                         const Divider(height: 24),
                         _buildDetailRow(
                           icon: Icons.security,
@@ -849,6 +869,20 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                           iconColor: accentGreen,
                           textColor: textPri,
                         ),
+                        if (!isOwner) ...[
+                          const Divider(height: 24),
+                          _buildDetailRow(
+                            icon: Icons.admin_panel_settings_rounded,
+                            title: 'Device Admin / Owner',
+                            value: (device.ownerName != null && device.ownerName!.isNotEmpty)
+                                ? ((device.ownerEmail != null && device.ownerEmail!.isNotEmpty)
+                                    ? '${device.ownerName!} (${device.ownerEmail!})'
+                                    : device.ownerName!)
+                                : (device.ownerEmail ?? 'Admin'),
+                            iconColor: const Color(0xFFF59E0B),
+                            textColor: textPri,
+                          ),
+                        ],
 
                       ],
                     ),
@@ -987,14 +1021,21 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
       children: [
         Icon(icon, color: iconColor, size: 24),
         const SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: TextStyle(color: Colors.grey, fontSize: 12)),
-            const SizedBox(height: 4),
-            Text(value, style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold)),
-          ],
-        )
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.bold),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }

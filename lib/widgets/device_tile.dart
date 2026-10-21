@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/device_model.dart';
+import '../providers/device_provider.dart';
 import '../theme/app_theme.dart';
 
 class DeviceTile extends StatelessWidget {
@@ -7,6 +10,9 @@ class DeviceTile extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
   final VoidCallback? onDoubleTap;
+  final VoidCallback? onConfigTap;
+  final VoidCallback? onWifiSetupTap;
+  final VoidCallback? onDeleteTap;
 
   const DeviceTile({
     super.key,
@@ -14,6 +20,9 @@ class DeviceTile extends StatelessWidget {
     required this.isSelected,
     required this.onTap,
     this.onDoubleTap,
+    this.onConfigTap,
+    this.onWifiSetupTap,
+    this.onDeleteTap,
   });
 
   @override
@@ -92,7 +101,9 @@ class DeviceTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      device.messages.isNotEmpty ? device.messages.last.text : 'No messages yet',
+                      device.messages.isNotEmpty
+                          ? _formatPreviewText(context, device.messages.last.text)
+                          : 'No messages yet',
                       style: TextStyle(
                         color: isDark ? AppTheme.textSecondary : AppTheme.textSecondaryLight,
                         fontSize: 13,
@@ -105,7 +116,7 @@ class DeviceTile extends StatelessWidget {
               ),
 
               // Unread Badge (if any)
-              if (device.unreadCount > 0)
+              if (device.unreadCount > 0) ...[
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: const BoxDecoration(
@@ -121,11 +132,116 @@ class DeviceTile extends StatelessWidget {
                     ),
                   ),
                 ),
+                const SizedBox(width: 4),
+              ],
+
+              // 3-Dot Options Menu
+              Material(
+                color: Colors.transparent,
+                child: PopupMenuButton<String>(
+                  icon: Icon(
+                    Icons.more_vert_rounded,
+                    color: isDark ? AppTheme.textSecondary : AppTheme.textSecondaryLight,
+                    size: 20,
+                  ),
+                  tooltip: 'Device Options',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  splashRadius: 18,
+                  onSelected: (val) {
+                    if (val == 'config') {
+                      onConfigTap?.call();
+                    } else if (val == 'wifi_setup') {
+                      onWifiSetupTap?.call();
+                    } else if (val == 'delete') {
+                      onDeleteTap?.call();
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem<String>(
+                      value: 'config',
+                      child: Row(
+                        children: const [
+                          Icon(Icons.tune_rounded, size: 18, color: Color(0xFF00A884)),
+                          SizedBox(width: 10),
+                          Text('Configuration', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem<String>(
+                      value: 'wifi_setup',
+                      child: Row(
+                        children: const [
+                          Icon(Icons.wifi_rounded, size: 18, color: Color(0xFF00A884)),
+                          SizedBox(width: 10),
+                          Text('Wi-Fi Setup', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                        ],
+                      ),
+                    ),
+                    if (onDeleteTap != null)
+                      PopupMenuItem<String>(
+                        value: 'delete',
+                        child: Row(
+                          children: const [
+                            Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                            SizedBox(width: 10),
+                            Text('Delete Device', style: TextStyle(fontSize: 13, color: Colors.redAccent, fontWeight: FontWeight.w500)),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
       ),
       ),
     );
+  }
+
+  String _formatPreviewText(BuildContext context, String text) {
+    final trimmed = text.trim();
+    if (trimmed.startsWith('__CLICKABLE__:')) {
+      return 'Device Status';
+    }
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      try {
+        final parsed = jsonDecode(trimmed);
+        if (parsed is Map) {
+          if (parsed['type']?.toString().toUpperCase() == 'CLICKABLE') {
+            return 'Device Status';
+          }
+          if (parsed['message'] != null && parsed['message'].toString().trim().isNotEmpty) {
+            return parsed['message'].toString().trim();
+          }
+          if (parsed['status'] != null && parsed['status'].toString().trim().isNotEmpty) {
+            return parsed['status'].toString().trim();
+          }
+          return 'Status: Online • Ready';
+        }
+      } catch (_) {}
+    }
+    var firstLine = trimmed.split('\n').firstWhere((l) => l.trim().isNotEmpty, orElse: () => trimmed);
+    try {
+      final devId = device.deviceId.isNotEmpty ? device.deviceId : device.id;
+      final savedConfig = Provider.of<DeviceProvider>(context, listen: false).getDeviceSavedConfig(devId);
+      for (int i = 1; i <= 16; i++) {
+        final custom = savedConfig['Relay $i'] ??
+            savedConfig['relay $i'] ??
+            savedConfig['Channel $i'] ??
+            savedConfig['channel $i'] ??
+            savedConfig['Slot $i'] ??
+            savedConfig['slot $i'] ??
+            savedConfig['$i'];
+        if (custom != null && custom.toString().trim().isNotEmpty) {
+          final cStr = custom.toString().trim();
+          firstLine = firstLine.replaceAll(RegExp('Relay $i\\b', caseSensitive: false), cStr);
+          firstLine = firstLine.replaceAll(RegExp('Channel $i\\b', caseSensitive: false), cStr);
+          firstLine = firstLine.replaceAll(RegExp('Slot $i\\b', caseSensitive: false), cStr);
+        }
+      }
+    } catch (_) {}
+    return firstLine;
   }
 }

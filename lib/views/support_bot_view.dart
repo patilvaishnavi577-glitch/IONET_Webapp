@@ -87,13 +87,11 @@ class _SupportBotViewState extends State<SupportBotView> {
     if (q.contains('add') || q.contains('device')) {
       return 'To add a device, go to the Devices tab and click the + floating action button.';
     } else if (q.contains('command') || q.contains('quick')) {
-      return 'Quick commands are shortcut actions (like Status, Reboot) located right above the input box in a device chat.';
+      return 'Quick commands are shortcut actions sent to your device, located right above the input box in the device chat.';
     } else if (q.contains('qr') || q.contains('scan')) {
       return 'You can scan a QR code by clicking the scanner icon inside the Add Device dialog.';
-    } else if (q.contains('credits')) {
-      return 'Credits are demo points shown in the top-left corner of the home screen.';
     } else {
-      return 'I understand you are asking about "$query". As a mock bot, I recommend checking our FAQs!';
+      return 'I understand you are asking about "$query". For detailed guidance, please check our Knowledge Base Channels or contact support.';
     }
   }
 

@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IONET WebApp — Workflow</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f4f6f9;
+      color: #1a1a2e;
+      font-size: 13px;
+    }
+
+    .page {
+      max-width: 900px;
+      margin: 30px auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      padding: 40px 50px;
+    }
+
+    /* --- Header --- */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 3px solid #00A884;
+      padding-bottom: 16px;
+      margin-bottom: 28px;
+    }
+    .header h1 {
+      font-size: 24px;
+      color: #00A884;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+    .header .badge {
+      background: #00A884;
+      color: white;
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .subtitle {
+      color: #555;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    /* --- Section --- */
+    .section {
+      margin-bottom: 28px;
+    }
+    .section-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #00A884;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-left: 4px solid #00A884;
+      padding-left: 10px;
+      margin-bottom: 14px;
+    }
+
+    /* --- Flow Steps --- */
+    .flow {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+    }
+    .step-left {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 38px;
+    }
+    .step-num {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: #00A884;
+      color: white;
+      font-size: 12px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      z-index: 1;
+    }
+    .step-line {
+      width: 2px;
+      flex: 1;
+      min-height: 24px;
+      background: #c8f0e7;
+      margin: 0 auto;
+    }
+    .step-box {
+      flex: 1;
+      background: #f0fbf8;
+      border: 1.5px solid #c8f0e7;
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-left: 12px;
+      margin-bottom: 10px;
+    }
+    .step-box.last { margin-bottom: 0; }
+    .step-box h3 {
+      font-size: 13px;
+      font-weight: 700;
+      color: #00685a;
+      margin-bottom: 4px;
+    }
+    .step-box p {
+      font-size: 12px;
+      color: #444;
+      line-height: 1.6;
+    }
+    .step-box code {
+      background: #d4f5ec;
+      color: #006b4f;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: monospace;
+    }
+    .step-box .api-tag {
+      display: inline-block;
+      background: #e8f4fd;
+      color: #1565c0;
+      padding: 1px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      font-family: monospace;
+      margin-top: 4px;
+    }
+    .step-box .branch {
+      margin-top: 6px;
+      padding-left: 12px;
+      border-left: 2px dashed #00A884;
+    }
+    .step-box .branch p { font-size: 11.5px; margin: 2px 0; }
+
+    /* --- WS Box --- */
+    .ws-box {
+      background: #1a1a2e;
+      border-radius: 10px;
+      padding: 16px 20px;
+      color: #fff;
+      font-family: monospace;
+      font-size: 11.5px;
+      line-height: 1.8;
+    }
+    .ws-box .ws-title {
+      color: #00A884;
+      font-size: 12px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+    .ws-send { color: #7dd3fc; }
+    .ws-recv { color: #86efac; }
+    .ws-label { color: #a0a0c0; font-size: 10px; }
+
+    /* --- Status Box --- */
+    .status-box {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .status-card {
+      flex: 1;
+      border-radius: 10px;
+      padding: 14px 16px;
+      border: 1.5px solid;
+    }
+    .status-card.green { background: #f0fbf8; border-color: #00A884; }
+    .status-card.red   { background: #fff5f5; border-color: #f87171; }
+    .status-card.blue  { background: #eff6ff; border-color: #60a5fa; }
+    .status-card .status-icon { font-size: 20px; margin-bottom: 6px; }
+    .status-card h4 { font-size: 12px; font-weight: 800; margin-bottom: 4px; }
+    .status-card p  { font-size: 11px; color: #555; line-height: 1.5; }
+
+    /* --- Table --- */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th {
+      background: #00A884;
+      color: white;
+      padding: 8px 12px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    td {
+      padding: 7px 12px;
+      border-bottom: 1px solid #e8edf2;
+      color: #333;
+    }
+    tr:nth-child(even) td { background: #f8fbfa; }
+    td code {
+      background: #eef5f2;
+      color: #006b4f;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 11px;
+    }
+    td .method {
+      font-weight: 700;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    .get    { background: #e8f5e9; color: #2e7d32; }
+    .post   { background: #fff3e0; color: #e65100; }
+    .put    { background: #e3f2fd; color: #1565c0; }
+    .delete { background: #fce4ec; color: #c62828; }
+
+    /* --- Feature Grid --- */
+    .features {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .feat-card {
+      background: #f8fbfa;
+      border: 1px solid #d4ede7;
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+    .feat-card .feat-icon { font-size: 16px; margin-bottom: 4px; }
+    .feat-card h4 { font-size: 12px; font-weight: 700; color: #00685a; }
+    .feat-card p  { font-size: 11px; color: #555; margin-top: 2px; }
+
+    /* --- Footer --- */
+    .footer {
+      margin-top: 30px;
+      border-top: 1.5px solid #e0e0e0;
+      padding-top: 14px;
+      text-align: center;
+      color: #888;
+      font-size: 11px;
+    }
+
+    /* --- Print --- */
+    @media print {
+      body { background: white; }
+      .page { box-shadow: none; margin: 0; border-radius: 0; padding: 24px 36px; }
+      .print-btn { display: none; }
+    }
+
+    .print-btn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #00A884;
+      color: white;
+      border: none;
+      padding: 10px 22px;
+      border-radius: 24px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,168,132,0.35);
+    }
+    .print-btn:hover { background: #008069; }
+
+    .highlight { color: #00A884; font-weight: 700; }
+    .pill {
+      display: inline-block;
+      background: #e6f9f4;
+      color: #007a5c;
+      border-radius: 12px;
+      padding: 1px 9px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+<button class="print-btn" onclick="window.print()">🖨️ Save as PDF</button>
+
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div>
+      <h1>IONET WebApp</h1>
+      <div class="subtitle">IoT Device Management Platform &nbsp;|&nbsp; Backend: api.ionet.sunshineiot.in &nbsp;|&nbsp; v1.0.6</div>
+    </div>
+    <div class="badge">Flutter App</div>
+  </div>
+
+  <!-- BACKEND STATUS -->
+  <div class="section">
+    <div class="section-title">Backend Status Check</div>
+    <div class="status-box">
+      <div class="status-card green">
+        <div class="status-icon">✅</div>
+        <h4>Server is LIVE</h4>
+        <p>api.ionet.sunshineiot.in is responding correctly. Returns <code>{"success": false, "message": "Unauthorized"}</code> on browser access — this is expected.</p>
+      </div>
+      <div class="status-card blue">
+        <div class="status-icon">🔐</div>
+        <h4>Why "Unauthorized"?</h4>
+        <p>The browser sends no JWT token. Every API endpoint requires <code>Authorization: Bearer &lt;token&gt;</code>. This is the correct, secure behavior.</p>
+      </div>
+      <div class="status-card green">
+        <div class="status-icon">📱</div>
+        <h4>App works fine</h4>
+        <p>The Flutter app automatically sends the token with every request after login. No issue in the code. Nothing needs to be fixed.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- WORKFLOW -->
+  <div class="section">
+    <div class="section-title">App Workflow — Step by Step</div>
+    <div class="flow">
+
+      <div class="step">
+        <div class="step-left"><div class="step-num">1</div><div class="step-line"></div></div>
+        <div class="step-box">
+          <h3>User Opens App → Auth Screen</h3>
+          <p>User types their <strong>email address</strong> and taps "Send OTP".</p>
+          <div class="api-tag">POST /api/v1/auth/request-otp</div>
+          <p style="margin-top:6px">Server sends a 6-digit OTP code to the email.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-left"><div class="step-num">2</div><div class="step-line"></div></div>
+        <div class="step-box">
+          <h3>OTP Verification</h3>
+          <p>User enters the 6-digit OTP code. App verifies it with the server.</p>
+          <div class="api-tag">POST /api/v1/auth/verify-otp</div>
+          <div class="branch">
+            <p>🆕 <strong>New User</strong> → goes to Complete Profile page (name + phone)</p>
+            <p>🔁 <strong>Existing User</strong> → goes directly to Home screen</p>
+          </div>
+          <p style="margin-top:6px">JWT token is saved locally (SharedPreferences) for auto-login next time.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-left"><div class="step-num">3</div><div class="step-line"></div></div>
+        <div class="step-box">
+          <h3>Home Screen Loads</h3>
+          <p>App fetches the user's devices from the server.</p>
+          <div class="api-tag">GET /api/v1/devices</div>
+          <p style="margin-top:6px">Each device shows: Name, Online/Offline status, Last active time, and Avatar image.</p>
+          <p>Online = device was seen within <strong>5 minutes</strong>. Otherwise = Offline.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-left"><div class="step-num">4</div><div class="step-line"></div></div>
+        <div class="step-box">
+          <h3>User Taps a Device → Chat Opens</h3>
+          <p>Status shows <strong>"Connecting..."</strong></p>
+          <p>App opens a <strong>WebSocket</strong> connection to the device:</p>
+          <p><code>wss://api.ionet.sunshineiot.in/ws?deviceId=X&amp;type=mobile&amp;token=JWT</code></p>
+          <p style="margin-top:6px">A <strong>10-second watchdog timer</strong> starts. If device responds → Online ✅. If no response in 10s → Offline ❌.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-left"><div class="step-num">5</div><div class="step-line"></div></div>
+        <div class="step-box">
+          <h3>Live Communication via WebSocket</h3>
+          <p>User presses <strong>STATUS</strong> button → app sends: <code>{"command": "/status"}</code></p>
+          <p style="margin-top:6px">Device replies with JSON sensor data. App parses it and shows in chat as readable text:</p>
+          <p style="margin-top:4px; font-family:monospace; background:#f0fbf8; padding:6px 10px; border-radius:6px;">
+            Relay 1: On<br>
+            Temperature: 28.5<br>
+            Fan: Off
+          </p>
+          <p style="margin-top:6px">Device also sends its <strong>available commands list</strong> → shown as quick-tap buttons.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-left"><div class="step-num">6</div><div class="step-line"></div></div>
+        <div class="step-box">
+          <h3>User Sends Commands</h3>
+          <div class="branch">
+            <p>⚡ Tap <strong>Quick Command</strong> chip → instantly sends that command</p>
+            <p>⌨️ Type any <strong>/command</strong> in the text box and press send</p>
+            <p>⚙️ Tap <strong>CONFIG</strong> → opens form to configure device parameters</p>
+            <p>📶 Tap <strong>Wi-Fi Setup</strong> → send SSID and password to device</p>
+            <p>🔁 Tap a <strong>command in chat bubble</strong> → resends it</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-left"><div class="step-num">7</div><div class="step-line"></div></div>
+        <div class="step-box last">
+          <h3>Auto-Reconnect if Connection Drops</h3>
+          <p>If WebSocket disconnects (network issue, device reboot, etc.):</p>
+          <div class="branch">
+            <p>⏱ App waits <strong>3 seconds</strong></p>
+            <p>🔄 Automatically tries to reconnect</p>
+            <p>⏰ If no message for <strong>10 seconds</strong> → marks device Offline</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- WEBSOCKET -->
+  <div class="section">
+    <div class="section-title">WebSocket Message Format</div>
+    <div class="ws-box">
+      <div class="ws-label">APP → DEVICE (you send):</div>
+      <div class="ws-send">  {"command": "/status"}               ← request device data</div>
+      <div class="ws-send">  {"command": "/led_on"}               ← turn on LED</div>
+      <div class="ws-send">  {"command": "/config", "data": {...}} ← configure device</div>
+      <div class="ws-send">  {"command": "/set-up_wifi", ...}      ← send WiFi credentials</div>
+      <br>
+      <div class="ws-label">DEVICE → APP (device replies):</div>
+      <div class="ws-recv">  {"type": "connected"}                 ← handshake (silent)</div>
+      <div class="ws-recv">  {"type": "heartbeat"}                 ← keep-alive (silent, invisible)</div>
+      <div class="ws-recv">  {"type": "device_offline"}            ← device disconnected</div>
+      <div class="ws-recv">  {"data": {"relay1":"On","temp":28.5}} ← sensor/telemetry data</div>
+      <div class="ws-recv">  {"availableCommands": [...]}          ← list of valid commands</div>
+    </div>
+  </div>
+
+  <!-- API TABLE -->
+  <div class="section">
+    <div class="section-title">Key API Endpoints</div>
+    <table>
+      <tr>
+        <th>Action</th>
+        <th>Method</th>
+        <th>Endpoint</th>
+      </tr>
+      <tr><td>Send OTP to email</td><td><span class="method post">POST</span></td><td><code>/api/v1/auth/request-otp</code></td></tr>
+      <tr><td>Verify OTP, get token</td><td><span class="method post">POST</span></td><td><code>/api/v1/auth/verify-otp</code></td></tr>
+      <tr><td>Get my profile</td><td><span class="method get">GET</span></td><td><code>/api/v1/users/me</code></td></tr>
+      <tr><td>Create profile (new user)</td><td><span class="method post">POST</span></td><td><code>/api/v1/users/profile</code></td></tr>
+      <tr><td>Get all devices</td><td><span class="method get">GET</span></td><td><code>/api/v1/devices</code></td></tr>
+      <tr><td>Add new device</td><td><span class="method post">POST</span></td><td><code>/api/v1/devices</code></td></tr>
+      <tr><td>Update device name</td><td><span class="method put">PUT</span></td><td><code>/api/v1/devices/{id}</code></td></tr>
+      <tr><td>Delete device</td><td><span class="method delete">DELETE</span></td><td><code>/api/v1/devices/{id}</code></td></tr>
+      <tr><td>Share device with user</td><td><span class="method post">POST</span></td><td><code>/api/v1/devices/{id}/share</code></td></tr>
+      <tr><td>Get knowledge channels</td><td><span class="method get">GET</span></td><td><code>/api/v1/channels</code></td></tr>
+      <tr><td>Get updates/news</td><td><span class="method get">GET</span></td><td><code>/api/v1/updates</code></td></tr>
+    </table>
+  </div>
+
+  <!-- FEATURES -->
+  <div class="section">
+    <div class="section-title">Key Features at a Glance</div>
+    <div class="features">
+      <div class="feat-card">
+        <div class="feat-icon">🔑</div>
+        <h4>OTP Login</h4>
+        <p>Email → 6-digit OTP → JWT token auto-saved for next login</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📡</div>
+        <h4>Real-time WebSocket</h4>
+        <p>Persistent connection to device. Commands and data flow both ways instantly</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">⏱️</div>
+        <h4>Watchdog Timer</h4>
+        <p>If device is silent for 10 seconds → automatically marked Offline</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🔄</div>
+        <h4>Auto-Reconnect</h4>
+        <p>WebSocket drops? App reconnects after 3 seconds automatically</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">⚡</div>
+        <h4>Quick Commands</h4>
+        <p>Device sends its command list → shown as tap buttons in chat</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">👥</div>
+        <h4>Device Sharing</h4>
+        <p>Owner can share device access with other users by email/phone</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🌙</div>
+        <h4>Dark / Light Theme</h4>
+        <p>Supports Light, Dark, and System theme. Saved between sessions</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📚</div>
+        <h4>Knowledge Channels</h4>
+        <p>PDF guides, YouTube videos, and links — organized in channels</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    IONET WebApp &nbsp;|&nbsp; Sunshine IoT &nbsp;|&nbsp; v1.0.6 &nbsp;|&nbsp;
+    Press <strong>Ctrl+P</strong> (or the Save as PDF button) to export this as PDF
+  </div>
+
+</div>
+</body>
+</html>

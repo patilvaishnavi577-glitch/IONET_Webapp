@@ -20,6 +20,8 @@ import '../widgets/device_chat_view.dart';
 import '../widgets/device_tile.dart';
 import '../widgets/story_player.dart';
 import '../utils/toast_service.dart';
+import '../services/api_service.dart';
+import '../services/qr_scanner/qr_scanner_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -110,18 +112,57 @@ class _HomeScreenState extends State<HomeScreen> {
                             color: isDark ? AppTheme.textPrimary : AppTheme.textPrimaryLight,
                             fontSize: 15,
                           ),
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Device ID',
                             hintText: 'Enter device ID',
+                            suffixIcon: IconButton(
+                              icon: const Icon(
+                                Icons.qr_code_scanner_rounded,
+                                color: Color(0xFF8696A0),
+                                size: 22,
+                              ),
+                              tooltip: 'Scan QR Code',
+                              onPressed: isSubmitting
+                                  ? null
+                                  : () async {
+                                      final scanned = await QrScannerService.scan(context);
+                                      if (scanned != null && scanned.trim().isNotEmpty) {
+                                        final parsed = QrScannerService.parseDeviceQr(scanned);
+                                        if (parsed.deviceId.isNotEmpty) {
+                                          deviceIdController.text = parsed.deviceId;
+                                          if (parsed.deviceName != null && parsed.deviceName!.isNotEmpty) {
+                                            deviceNameController.text = parsed.deviceName!;
+                                          } else {
+                                            // Dynamic backend fetch: check if device exists to prefill name
+                                            final token = context.read<UserSessionProvider>().session.token;
+                                            if (token != null) {
+                                              try {
+                                                final dev = await ApiService().getDeviceById(
+                                                  token: token,
+                                                  deviceId: parsed.deviceId,
+                                                );
+                                                if (dev != null) {
+                                                  final devName = dev['deviceName']?.toString() ?? dev['name']?.toString();
+                                                  if (devName != null && devName.trim().isNotEmpty) {
+                                                    deviceNameController.text = devName.trim();
+                                                  }
+                                                }
+                                              } catch (_) {}
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                            ),
                           ),
                           inputFormatters: [
-                            FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+                            FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_\-]')),
                           ],
                           validator: (val) {
                             if (val == null || val.trim().isEmpty) {
                               return 'Please enter Device ID';
                             }
-                            if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(val.trim())) {
+                            if (!RegExp(r'^[a-zA-Z0-9_\-]+$').hasMatch(val.trim())) {
                               return 'Special characters not allowed';
                             }
                             return null;
@@ -158,10 +199,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             TextButton(
                               onPressed: isSubmitting ? null : () => Navigator.of(dialogContext).pop(),
-                              child: Text(
+                              child: const Text(
                                 'Cancel',
                                 style: TextStyle(
-                                  color: isDark ? AppTheme.textSecondary : AppTheme.textSecondaryLight,
+                                  color: Color(0xFF00A884),
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -170,7 +211,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             const SizedBox(width: 12),
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: isDark ? const Color(0xFF2B3240) : const Color(0xFF008069),
+                                backgroundColor: const Color(0xFF00A884),
                                 foregroundColor: Colors.white,
                                 minimumSize: const Size(100, 44),
                                 shape: RoundedRectangleBorder(
@@ -297,6 +338,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 setState(() {
                   _showMobileChat = false;
                 });
+                context.read<DeviceProvider>().selectDevice(null);
               },
             ),
           ),
@@ -816,6 +858,22 @@ class _HomeScreenState extends State<HomeScreen> {
                             device,
                             isDark,
                           ),
+                          onConfigTap: () => _showConfigurationDialog(
+                            context,
+                            deviceProvider,
+                            device,
+                          ),
+                          onWifiSetupTap: () => _showWifiSetupDialog(
+                            context,
+                            deviceProvider,
+                            device,
+                          ),
+                          onDeleteTap: () => _showDeleteDeviceDialog(
+                            context,
+                            deviceProvider,
+                            device,
+                            isDark,
+                          ),
                         );
                       },
                     ),
@@ -884,6 +942,34 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showConfigurationDialog(
+    BuildContext context,
+    DeviceProvider deviceProvider,
+    Device device,
+  ) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => DeviceConfigDialog(
+        provider: deviceProvider,
+        device: device,
+      ),
+    );
+  }
+
+  void _showWifiSetupDialog(
+    BuildContext context,
+    DeviceProvider deviceProvider,
+    Device device,
+  ) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => WifiSetupDialog(
+        provider: deviceProvider,
+        device: device,
       ),
     );
   }

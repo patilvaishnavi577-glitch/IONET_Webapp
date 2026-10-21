@@ -3,5 +3,5 @@ class ApiConfig {
   static const String baseUrl = 'https://api.ionet.sunshineiot.in';
 
   /// Application Version Control
-  static const String appVersion = '1.0.6';
+  static const String appVersion = '1.0.7';
 }

@@ -33,8 +33,8 @@ class _HelpViewState extends State<HelpView> {
       'answer': 'Click the scanner icon inside the Add Device dialog to scan a device QR code using your camera.',
     },
     {
-      'question': 'How do I earn credits?',
-      'answer': 'Credits are provided automatically for demo purposes. They are shown on the top left of the home screen.',
+      'question': 'How do I share a device?',
+      'answer': 'Open the device profile settings from the top-right menu to manage shared access with other users.',
     },
   ];
 
