@@ -400,7 +400,7 @@ class ApiService {
     if (lower.endsWith('.png')) {
       return MediaType('image', 'png');
     } else if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
-      return MediaType('image', 'jpeg');
+      return MediaType('image','jpeg');
     } else if (lower.endsWith('.gif')) {
       return MediaType('image', 'gif');
     } else if (lower.endsWith('.webp')) {

@@ -139,6 +139,7 @@ class DeviceProvider extends ChangeNotifier {
   final Map<String, Map<String, dynamic>> _latestDeviceStatusData = {};
   final Map<String, List<QuickCommand>> _customQuickCommands = {};
   final Map<String, List<QuickCommand>> _deviceQuickCommands = {};
+  final Map<String, List<QuickCommand>> _deviceRawQuickCommands = {};
   final Map<String, Map<String, dynamic>> _deviceSavedConfigurations = {};
   final Map<String, Map<String, double>> _deviceSliderValues = {};
   final Map<String, Map<String, NumericSetting>> _deviceNumericSettings = {};
@@ -557,77 +558,142 @@ class DeviceProvider extends ChangeNotifier {
         dId.contains('wt');
   }
 
+  QuickCommand _resolveDynamicCommand(
+    QuickCommand cmd,
+    Map<String, dynamic> savedConfig,
+    String devId,
+  ) {
+    final String baseLabel = (cmd.rawLabel != null && cmd.rawLabel!.trim().isNotEmpty)
+        ? cmd.rawLabel!.trim()
+        : cmd.label.trim();
+    final cleanBase = baseLabel.isNotEmpty
+        ? baseLabel
+        : (cmd.message.startsWith('/') ? cmd.message.substring(1) : cmd.message);
+
+    if (savedConfig.isEmpty) {
+      final savedSliderVal = getDeviceSliderValue(devId, cmd.message);
+      return cmd.copyWith(
+        rawLabel: cleanBase,
+        value: savedSliderVal ?? cmd.value,
+      );
+    }
+
+    String newLabel = cleanBase;
+
+    // 1. Direct match on command message or base label (e.g. '/relay1_on', '/status', 'Relay 1')
+    final directMatch = savedConfig[cmd.message] ??
+        savedConfig[cmd.message.toLowerCase()] ??
+        savedConfig[cleanBase] ??
+        savedConfig[cleanBase.toLowerCase()];
+
+    if (directMatch != null && directMatch.toString().trim().isNotEmpty) {
+      newLabel = directMatch.toString().trim();
+    } else {
+      // 2. Extract slot/channel/relay number dynamically from command message or label
+      // Zero hardcoding: matches any integer without hardcoded limits
+      final slotMatch = RegExp(r'(?:relay|channel|slot|ch|r|s)?[\s_-]*(\d+)', caseSensitive: false).firstMatch(cmd.message) ??
+          RegExp(r'(?:relay|channel|slot|ch|r|s)?[\s_-]*(\d+)', caseSensitive: false).firstMatch(cleanBase);
+      final slotNum = slotMatch?.group(1);
+
+      if (slotNum != null && slotNum.isNotEmpty) {
+        final customName = savedConfig['Relay $slotNum'] ??
+            savedConfig['relay $slotNum'] ??
+            savedConfig['Channel $slotNum'] ??
+            savedConfig['channel $slotNum'] ??
+            savedConfig['Slot $slotNum'] ??
+            savedConfig['slot $slotNum'] ??
+            savedConfig['relay_$slotNum'] ??
+            savedConfig['channel_$slotNum'] ??
+            savedConfig[slotNum];
+
+        if (customName != null && customName.toString().trim().isNotEmpty) {
+          final cStr = customName.toString().trim();
+          final replaced = newLabel.replaceAll(
+            RegExp('(?:Relay|Channel|Slot|Ch|R)\\s*$slotNum\\b', caseSensitive: false),
+            cStr,
+          );
+
+          if (replaced != newLabel) {
+            newLabel = replaced;
+          } else {
+            // Check if label contains an action word like On, Off, Toggle, Open, Close, etc.
+            final actionMatch = RegExp(
+              r'\b(on|off|toggle|open|close|start|stop|up|down|high|low)\b',
+              caseSensitive: false,
+            ).firstMatch(cleanBase);
+            if (actionMatch != null) {
+              newLabel = '$cStr ${actionMatch.group(0)!.toUpperCase()}';
+            } else if (RegExp(r'^\d+$').hasMatch(cleanBase)) {
+              newLabel = cStr;
+            }
+          }
+        }
+      }
+
+      // 3. Dynamic replacement for any custom names specified in savedConfig
+      savedConfig.forEach((key, val) {
+        if (val != null && val.toString().trim().isNotEmpty) {
+          final valStr = val.toString().trim();
+          final keyClean = key.toString().trim();
+          if (keyClean.toLowerCase().startsWith('relay ') ||
+              keyClean.toLowerCase().startsWith('channel ') ||
+              keyClean.toLowerCase().startsWith('slot ')) {
+            newLabel = newLabel.replaceAll(
+              RegExp(RegExp.escape(keyClean) + r'\b', caseSensitive: false),
+              valStr,
+            );
+          }
+        }
+      });
+    }
+
+    final savedSliderVal = getDeviceSliderValue(devId, cmd.message);
+    return cmd.copyWith(
+      label: newLabel,
+      rawLabel: cleanBase,
+      value: savedSliderVal ?? cmd.value,
+    );
+  }
+
   List<QuickCommand> getQuickCommands(String deviceId, {String? model, String? deviceName}) {
     final dev = _findDevice(deviceId);
     final hwId = dev?.deviceId.isNotEmpty == true ? dev!.deviceId : deviceId;
     final dbId = dev?.id.isNotEmpty == true ? dev!.id : deviceId;
 
-    // 1. Direct match in _deviceQuickCommands (loaded dynamically from backend WebSocket / device list / API / commands)
-    List<QuickCommand>? deviceCmds = _deviceQuickCommands[hwId] ??
-        _deviceQuickCommands[dbId] ??
-        _deviceQuickCommands[deviceId] ??
-        (dev != null ? _deviceQuickCommands[dev.deviceId] ?? _deviceQuickCommands[dev.id] : null);
+    // 1. Direct match in _deviceRawQuickCommands or _deviceQuickCommands
+    List<QuickCommand>? rawCmds = _deviceRawQuickCommands[hwId] ??
+        _deviceRawQuickCommands[dbId] ??
+        _deviceRawQuickCommands[deviceId] ??
+        (dev != null ? _deviceRawQuickCommands[dev.deviceId] ?? _deviceRawQuickCommands[dev.id] : null);
 
-    if (deviceCmds != null && deviceCmds.isNotEmpty) {
-      return deviceCmds;
+    if (rawCmds == null || rawCmds.isEmpty) {
+      rawCmds = _deviceQuickCommands[hwId] ??
+          _deviceQuickCommands[dbId] ??
+          _deviceQuickCommands[deviceId] ??
+          (dev != null ? _deviceQuickCommands[dev.deviceId] ?? _deviceQuickCommands[dev.id] : null);
     }
 
-    // 2. Check by device lookup (hwId, dbId, or dev.quickCommands from backend)
-    if (dev != null && dev.quickCommands.isNotEmpty) {
-      return dev.quickCommands;
+    List<QuickCommand> baseList = const [];
+    if (rawCmds != null && rawCmds.isNotEmpty) {
+      baseList = rawCmds;
+    } else if (dev != null && dev.quickCommands.isNotEmpty) {
+      baseList = dev.quickCommands;
+    } else {
+      final customCmds = _customQuickCommands[hwId] ??
+          _customQuickCommands[dbId] ??
+          _customQuickCommands[deviceId] ??
+          (dev != null ? _customQuickCommands[dev.deviceId] ?? _customQuickCommands[dev.id] : null);
+      if (customCmds != null && customCmds.isNotEmpty) {
+        baseList = customCmds;
+      }
     }
 
-    // 3. Fallback to custom commands if saved by user
-    final customCmds = _customQuickCommands[hwId] ??
-        _customQuickCommands[dbId] ??
-        _customQuickCommands[deviceId] ??
-        (dev != null ? _customQuickCommands[dev.deviceId] ?? _customQuickCommands[dev.id] : null);
-    if (customCmds != null && customCmds.isNotEmpty) {
-      return customCmds;
-    }
+    if (baseList.isEmpty) return const [];
 
-    // Zero hardcoding: return empty list if backend has not provided device-specific commands
-    return const [];
-  }
-
-  List<QuickCommand> _getDefaultCommandsForDevice(
-    String deviceId, {
-    String? model,
-    String? deviceName,
-  }) {
-    final dev = _findDevice(deviceId);
-    final hwId = dev?.deviceId.isNotEmpty == true ? dev!.deviceId : deviceId;
     final savedConfig = getDeviceSavedConfig(hwId);
-
-    List<QuickCommand> defaults = [];
-    if (dev != null && dev.quickCommands.isNotEmpty) {
-      defaults = List<QuickCommand>.from(dev.quickCommands);
-    }
-
-    if (defaults.isEmpty) {
-      return [];
-    }
-
-    return defaults.map((cmd) {
-      String label = cmd.label;
-      for (int i = 1; i <= 16; i++) {
-        final custom = savedConfig['Relay $i'] ??
-            savedConfig['relay $i'] ??
-            savedConfig['Channel $i'];
-        if (custom != null && custom.toString().trim().isNotEmpty) {
-          final cStr = custom.toString().trim();
-          label = label.replaceAll('Relay $i', cStr);
-        }
-      }
-      final directSaved = savedConfig[cmd.message] ?? savedConfig[cmd.label];
-      if (directSaved != null && directSaved.toString().trim().isNotEmpty) {
-        label = directSaved.toString().trim();
-      }
-      final savedSliderVal = getDeviceSliderValue(hwId, cmd.message);
-      final val = savedSliderVal ?? cmd.value;
-      return cmd.copyWith(label: label, value: val);
-    }).toList();
+    return baseList.map((cmd) => _resolveDynamicCommand(cmd, savedConfig, hwId)).toList();
   }
+
 
   void _saveLatestDeviceStatus(String hwId, String dbId, Map<String, dynamic> statusData) {
     try {
@@ -656,7 +722,8 @@ class DeviceProvider extends ChangeNotifier {
     final idx = _devices.indexWhere((d) => d.id == deviceId || d.deviceId == deviceId);
     if (idx != -1) {
       final dev = _devices[idx];
-      _devices[idx] = dev.copyWith(quickCommands: getQuickCommands(dev.deviceId));
+      final targetId = dev.deviceId.isNotEmpty ? dev.deviceId : dev.id;
+      _devices[idx] = dev.copyWith(quickCommands: getQuickCommands(targetId));
       notifyListeners();
     }
   }
@@ -749,6 +816,8 @@ class DeviceProvider extends ChangeNotifier {
                   }).toList()
                 : cachedList;
             if (sanitizedList.isNotEmpty) {
+              _deviceRawQuickCommands[hwId] = List<QuickCommand>.from(sanitizedList);
+              _deviceRawQuickCommands[dbId] = List<QuickCommand>.from(sanitizedList);
               _deviceQuickCommands[hwId] = sanitizedList;
               _deviceQuickCommands[dbId] = sanitizedList;
             }
@@ -769,43 +838,27 @@ class DeviceProvider extends ChangeNotifier {
   }
 
   void _applySavedConfigToCommands(String devId) {
-    var cmds = _deviceQuickCommands[devId];
-    if (cmds == null || cmds.isEmpty) {
+    var rawCmds = _deviceRawQuickCommands[devId];
+    if (rawCmds == null || rawCmds.isEmpty) {
+      rawCmds = _deviceQuickCommands[devId];
+    }
+    if (rawCmds == null || rawCmds.isEmpty) {
+      final dev = _findDevice(devId);
+      if (dev != null && dev.quickCommands.isNotEmpty) {
+        rawCmds = dev.quickCommands;
+      }
+    }
+    if (rawCmds == null || rawCmds.isEmpty) {
       return;
     }
     final savedConfig = getDeviceSavedConfig(devId);
-    final updated = cmds.map((cmd) {
-      String newLabel = cmd.label;
-      for (int i = 1; i <= 16; i++) {
-        final custom = savedConfig['Relay $i'] ??
-            savedConfig['relay $i'] ??
-            savedConfig['Channel $i'] ??
-            savedConfig['channel $i'] ??
-            savedConfig['Slot $i'] ??
-            savedConfig['slot $i'] ??
-            savedConfig['$i'];
-        if (custom != null && custom.toString().trim().isNotEmpty) {
-          final cStr = custom.toString().trim();
-          newLabel = newLabel.replaceAll(RegExp('Relay $i\\b', caseSensitive: false), cStr);
-          newLabel = newLabel.replaceAll(RegExp('Channel $i\\b', caseSensitive: false), cStr);
-          newLabel = newLabel.replaceAll(RegExp('Slot $i\\b', caseSensitive: false), cStr);
-        }
-      }
-      final savedName = savedConfig[cmd.message] ?? savedConfig[cmd.label];
-      if (savedName != null && savedName.toString().trim().isNotEmpty) {
-        newLabel = savedName.toString().trim();
-      }
-      final savedSliderVal = getDeviceSliderValue(devId, cmd.message);
-      return cmd.copyWith(
-        label: newLabel,
-        value: savedSliderVal ?? cmd.value,
-      );
-    }).toList();
+    final updated = rawCmds.map((cmd) => _resolveDynamicCommand(cmd, savedConfig, devId)).toList();
     _deviceQuickCommands[devId] = updated;
   }
 
   List<QuickCommand> _parseIncomingCommands(dynamic rawCmds, String hwId, String dbId) {
     final List<QuickCommand> parsedCommands = [];
+    final List<QuickCommand> rawParsedCommands = [];
     final savedConfig = getDeviceSavedConfig(hwId);
 
     void processCmd(String cmdKey, String cmdDesc, [Map? rawItem]) {
@@ -820,27 +873,6 @@ class DeviceProvider extends ChangeNotifier {
         rawLabel = rawLabel.isNotEmpty
             ? rawLabel[0].toUpperCase() + rawLabel.substring(1)
             : rawLabel;
-      }
-
-      // Check saved custom name
-      for (int i = 1; i <= 16; i++) {
-        final custom = savedConfig['Relay $i'] ??
-            savedConfig['relay $i'] ??
-            savedConfig['Channel $i'] ??
-            savedConfig['channel $i'] ??
-            savedConfig['Slot $i'] ??
-            savedConfig['slot $i'] ??
-            savedConfig['$i'];
-        if (custom != null && custom.toString().trim().isNotEmpty) {
-          final cStr = custom.toString().trim();
-          rawLabel = rawLabel.replaceAll(RegExp('Relay $i\\b', caseSensitive: false), cStr);
-          rawLabel = rawLabel.replaceAll(RegExp('Channel $i\\b', caseSensitive: false), cStr);
-          rawLabel = rawLabel.replaceAll(RegExp('Slot $i\\b', caseSensitive: false), cStr);
-        }
-      }
-      final savedName = savedConfig[cleanCmd] ?? savedConfig[rawLabel];
-      if (savedName != null && savedName.toString().trim().isNotEmpty) {
-        rawLabel = savedName.toString().trim();
       }
 
       final isSlider = (rawItem != null &&
@@ -868,18 +900,20 @@ class DeviceProvider extends ChangeNotifier {
           ? rawItem['type'].toString()
           : null;
 
-      parsedCommands.add(
-        QuickCommand(
-          label: rawLabel,
-          message: cleanCmd,
-          type: cmdType,
-          isSlider: isSlider,
-          minValue: minVal,
-          maxValue: maxVal,
-          step: step,
-          value: currentVal,
-        ),
+      final baseCmd = QuickCommand(
+        label: rawLabel,
+        rawLabel: rawLabel,
+        message: cleanCmd,
+        type: cmdType,
+        isSlider: isSlider,
+        minValue: minVal,
+        maxValue: maxVal,
+        step: step,
+        value: currentVal,
       );
+
+      rawParsedCommands.add(baseCmd);
+      parsedCommands.add(_resolveDynamicCommand(baseCmd, savedConfig, hwId));
     }
 
     if (rawCmds is List) {
@@ -913,6 +947,8 @@ class DeviceProvider extends ChangeNotifier {
     }
 
     if (parsedCommands.isNotEmpty) {
+      _deviceRawQuickCommands[hwId] = rawParsedCommands;
+      _deviceRawQuickCommands[dbId] = rawParsedCommands;
       _deviceQuickCommands[hwId] = parsedCommands;
       _deviceQuickCommands[dbId] = parsedCommands;
       _syncDeviceQuickCommands(hwId);

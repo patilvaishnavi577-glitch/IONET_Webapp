@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models/device_model.dart';
@@ -4973,8 +4974,12 @@ class _CyclicScheduleWheelDialogState extends State<CyclicScheduleWheelDialog> {
 
   late FixedExtentScrollController _startController;
   late FixedExtentScrollController _endController;
+  late TextEditingController _startTextController;
+  late TextEditingController _endTextController;
+  late FocusNode _startFocusNode;
+  late FocusNode _endFocusNode;
 
-  static const int _maxMinutes = 300; // Allows 0 to 300 minutes
+  static const int _maxMinutes = 999; // Allows 0 to 999 minutes
 
   @override
   void initState() {
@@ -5008,10 +5013,34 @@ class _CyclicScheduleWheelDialogState extends State<CyclicScheduleWheelDialog> {
 
     _startController = FixedExtentScrollController(initialItem: _startMin);
     _endController = FixedExtentScrollController(initialItem: _endMin);
+    _startTextController = TextEditingController(text: _startMin.toString());
+    _endTextController = TextEditingController(text: _endMin.toString());
+    _startFocusNode = FocusNode();
+    _endFocusNode = FocusNode();
+
+    _startFocusNode.addListener(() {
+      if (_startFocusNode.hasFocus && !_editingStart) {
+        setState(() {
+          _editingStart = true;
+        });
+      }
+    });
+
+    _endFocusNode.addListener(() {
+      if (_endFocusNode.hasFocus && _editingStart) {
+        setState(() {
+          _editingStart = false;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _startTextController.dispose();
+    _endTextController.dispose();
+    _startFocusNode.dispose();
+    _endFocusNode.dispose();
     _startController.dispose();
     _endController.dispose();
     super.dispose();
@@ -5022,96 +5051,39 @@ class _CyclicScheduleWheelDialogState extends State<CyclicScheduleWheelDialog> {
     setState(() {
       _editingStart = isStart;
     });
+    if (isStart) {
+      _startFocusNode.requestFocus();
+    } else {
+      _endFocusNode.requestFocus();
+    }
   }
 
-  void _adjustStep(int delta) {
-    setState(() {
-      if (_editingStart) {
-        _startMin = (_startMin + delta).clamp(0, _maxMinutes);
-        if (_startController.hasClients) {
-          _startController.animateToItem(
-            _startMin,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-          );
-        }
-      } else {
-        _endMin = (_endMin + delta).clamp(0, _maxMinutes);
-        if (_endController.hasClients) {
-          _endController.animateToItem(
-            _endMin,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-          );
-        }
+  void _onStartInputChanged(String val) {
+    final parsed = int.tryParse(val.trim());
+    if (parsed != null) {
+      final clamped = parsed.clamp(0, _maxMinutes);
+      setState(() {
+        _startMin = clamped;
+        _editingStart = true;
+      });
+      if (_startController.hasClients) {
+        _startController.jumpToItem(clamped);
       }
-    });
+    }
   }
 
-  void _showDirectInputDialog() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final currentVal = _editingStart ? _startMin : _endMin;
-    final controller = TextEditingController(text: currentVal.toString());
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF1E2830) : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          _editingStart ? 'Set ON Minutes' : 'Set OFF Minutes',
-          style: TextStyle(
-            color: isDark ? Colors.white : const Color(0xFF0F172A),
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          autofocus: true,
-          style: TextStyle(color: isDark ? Colors.white : Colors.black),
-          decoration: InputDecoration(
-            suffixText: 'min',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            hintText: 'Enter minutes (0-$_maxMinutes)',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final parsed = int.tryParse(controller.text.trim());
-              if (parsed != null) {
-                final clamped = parsed.clamp(0, _maxMinutes);
-                setState(() {
-                  if (_editingStart) {
-                    _startMin = clamped;
-                    if (_startController.hasClients) {
-                      _startController.jumpToItem(clamped);
-                    }
-                  } else {
-                    _endMin = clamped;
-                    if (_endController.hasClients) {
-                      _endController.jumpToItem(clamped);
-                    }
-                  }
-                });
-              }
-              Navigator.pop(ctx);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFF59E0B),
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
+  void _onEndInputChanged(String val) {
+    final parsed = int.tryParse(val.trim());
+    if (parsed != null) {
+      final clamped = parsed.clamp(0, _maxMinutes);
+      setState(() {
+        _endMin = clamped;
+        _editingStart = false;
+      });
+      if (_endController.hasClients) {
+        _endController.jumpToItem(clamped);
+      }
+    }
   }
 
   @override
@@ -5183,7 +5155,7 @@ class _CyclicScheduleWheelDialogState extends State<CyclicScheduleWheelDialog> {
             ),
             const SizedBox(height: 14),
 
-            // 2. ON Min & OFF Min Mode Tabs
+            // 2. ON Min & OFF Min Mode Tabs with Direct Inline TextFields
             Row(
               children: [
                 Expanded(
@@ -5192,10 +5164,10 @@ class _CyclicScheduleWheelDialogState extends State<CyclicScheduleWheelDialog> {
                     onTap: () => _selectTab(true),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: _editingStart
-                            ? accentAmber.withOpacity(isDark ? 0.22 : 0.12)
+                            ? accentAmber.withOpacity(isDark ? 0.16 : 0.08)
                             : (isDark ? const Color(0xFF1E2830) : const Color(0xFFF8FAFC)),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
@@ -5204,35 +5176,80 @@ class _CyclicScheduleWheelDialogState extends State<CyclicScheduleWheelDialog> {
                         ),
                       ),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
                                 Icons.play_circle_outline_rounded,
-                                size: 13,
+                                size: 14,
                                 color: _editingStart ? accentAmber : textSecondary,
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 5),
                               Text(
                                 'ON MIN',
                                 style: TextStyle(
                                   color: _editingStart ? accentAmber : textSecondary,
-                                  fontSize: 10.5,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: 0.5,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 3),
-                          Text(
-                            '$_startMin min',
-                            style: TextStyle(
-                              color: _editingStart ? textPrimary : textSecondary,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'monospace',
+                          const SizedBox(height: 8),
+
+                          // Direct editable Input Field
+                          Container(
+                            height: 42,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF0B141A) : Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: _editingStart
+                                    ? accentAmber.withOpacity(0.85)
+                                    : (isDark ? const Color(0xFF2A3942) : const Color(0xFFCBD5E1)),
+                                width: _editingStart ? 1.4 : 1.0,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _startTextController,
+                                    focusNode: _startFocusNode,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                      LengthLimitingTextInputFormatter(3),
+                                    ],
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: _editingStart ? textPrimary : textSecondary,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'monospace',
+                                    ),
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.zero,
+                                      border: InputBorder.none,
+                                    ),
+                                    onChanged: _onStartInputChanged,
+                                  ),
+                                ),
+                                Text(
+                                  'min',
+                                  style: TextStyle(
+                                    color: _editingStart ? accentAmber : textSecondary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -5247,10 +5264,10 @@ class _CyclicScheduleWheelDialogState extends State<CyclicScheduleWheelDialog> {
                     onTap: () => _selectTab(false),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: !_editingStart
-                            ? accentAmber.withOpacity(isDark ? 0.22 : 0.12)
+                            ? accentAmber.withOpacity(isDark ? 0.16 : 0.08)
                             : (isDark ? const Color(0xFF1E2830) : const Color(0xFFF8FAFC)),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
@@ -5259,35 +5276,80 @@ class _CyclicScheduleWheelDialogState extends State<CyclicScheduleWheelDialog> {
                         ),
                       ),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
                                 Icons.stop_circle_outlined,
-                                size: 13,
+                                size: 14,
                                 color: !_editingStart ? accentAmber : textSecondary,
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 5),
                               Text(
                                 'OFF MIN',
                                 style: TextStyle(
                                   color: !_editingStart ? accentAmber : textSecondary,
-                                  fontSize: 10.5,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: 0.5,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 3),
-                          Text(
-                            '$_endMin min',
-                            style: TextStyle(
-                              color: !_editingStart ? textPrimary : textSecondary,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'monospace',
+                          const SizedBox(height: 8),
+
+                          // Direct editable Input Field
+                          Container(
+                            height: 42,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF0B141A) : Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: !_editingStart
+                                    ? accentAmber.withOpacity(0.85)
+                                    : (isDark ? const Color(0xFF2A3942) : const Color(0xFFCBD5E1)),
+                                width: !_editingStart ? 1.4 : 1.0,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _endTextController,
+                                    focusNode: _endFocusNode,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                      LengthLimitingTextInputFormatter(3),
+                                    ],
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: !_editingStart ? textPrimary : textSecondary,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'monospace',
+                                    ),
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.zero,
+                                      border: InputBorder.none,
+                                    ),
+                                    onChanged: _onEndInputChanged,
+                                  ),
+                                ),
+                                Text(
+                                  'min',
+                                  style: TextStyle(
+                                    color: !_editingStart ? accentAmber : textSecondary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -5428,6 +5490,9 @@ class _CyclicScheduleWheelDialogState extends State<CyclicScheduleWheelDialog> {
                                       setState(() {
                                         _startMin = index;
                                         if (!_editingStart) _editingStart = true;
+                                        if (_startTextController.text != '$index') {
+                                          _startTextController.text = '$index';
+                                        }
                                       });
                                     },
                                     childDelegate: ListWheelChildBuilderDelegate(
@@ -5486,6 +5551,9 @@ class _CyclicScheduleWheelDialogState extends State<CyclicScheduleWheelDialog> {
                                       setState(() {
                                         _endMin = index;
                                         if (_editingStart) _editingStart = false;
+                                        if (_endTextController.text != '$index') {
+                                          _endTextController.text = '$index';
+                                        }
                                       });
                                     },
                                     childDelegate: ListWheelChildBuilderDelegate(
@@ -5530,6 +5598,11 @@ class _CyclicScheduleWheelDialogState extends State<CyclicScheduleWheelDialog> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
+                  final parsedStart = int.tryParse(_startTextController.text.trim());
+                  if (parsedStart != null) _startMin = parsedStart.clamp(0, _maxMinutes);
+                  final parsedEnd = int.tryParse(_endTextController.text.trim());
+                  if (parsedEnd != null) _endMin = parsedEnd.clamp(0, _maxMinutes);
+
                   final cyclicVal = '$_startMin - $_endMin';
 
                   final cleanKey = widget.cmd.message.startsWith('/')

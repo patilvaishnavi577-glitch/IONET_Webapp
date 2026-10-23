@@ -226,21 +226,18 @@ class DeviceTile extends StatelessWidget {
     try {
       final devId = device.deviceId.isNotEmpty ? device.deviceId : device.id;
       final savedConfig = Provider.of<DeviceProvider>(context, listen: false).getDeviceSavedConfig(devId);
-      for (int i = 1; i <= 16; i++) {
-        final custom = savedConfig['Relay $i'] ??
-            savedConfig['relay $i'] ??
-            savedConfig['Channel $i'] ??
-            savedConfig['channel $i'] ??
-            savedConfig['Slot $i'] ??
-            savedConfig['slot $i'] ??
-            savedConfig['$i'];
-        if (custom != null && custom.toString().trim().isNotEmpty) {
-          final cStr = custom.toString().trim();
-          firstLine = firstLine.replaceAll(RegExp('Relay $i\\b', caseSensitive: false), cStr);
-          firstLine = firstLine.replaceAll(RegExp('Channel $i\\b', caseSensitive: false), cStr);
-          firstLine = firstLine.replaceAll(RegExp('Slot $i\\b', caseSensitive: false), cStr);
+      savedConfig.forEach((key, val) {
+        if (val != null && val.toString().trim().isNotEmpty) {
+          final cStr = val.toString().trim();
+          final keyClean = key.toString().trim();
+          if (keyClean.toLowerCase().startsWith('relay ') ||
+              keyClean.toLowerCase().startsWith('channel ') ||
+              keyClean.toLowerCase().startsWith('slot ') ||
+              RegExp(r'^\d+$').hasMatch(keyClean)) {
+            firstLine = firstLine.replaceAll(RegExp(RegExp.escape(keyClean) + r'\b', caseSensitive: false), cStr);
+          }
         }
-      }
+      });
     } catch (_) {}
     return firstLine;
   }

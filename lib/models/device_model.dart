@@ -47,6 +47,7 @@ class ChatMessage {
 class QuickCommand {
   final String label;
   final String message;
+  final String? rawLabel;
   final String? type;
   final bool isCustom;
   final bool isSlider;
@@ -58,6 +59,7 @@ class QuickCommand {
   const QuickCommand({
     required this.label,
     required this.message,
+    this.rawLabel,
     this.type,
     this.isCustom = false,
     this.isSlider = false,
@@ -91,6 +93,7 @@ class QuickCommand {
   QuickCommand copyWith({
     String? label,
     String? message,
+    String? rawLabel,
     String? type,
     bool? isCustom,
     bool? isSlider,
@@ -102,6 +105,7 @@ class QuickCommand {
     return QuickCommand(
       label: label ?? this.label,
       message: message ?? this.message,
+      rawLabel: rawLabel ?? this.rawLabel,
       type: type ?? this.type,
       isCustom: isCustom ?? this.isCustom,
       isSlider: isSlider ?? this.isSlider,
@@ -115,6 +119,7 @@ class QuickCommand {
   Map<String, dynamic> toJson() => {
     'label': label,
     'message': message,
+    if (rawLabel != null) 'rawLabel': rawLabel,
     if (type != null) 'type': type,
     'isCustom': isCustom,
     'isSlider': isSlider,
@@ -137,6 +142,7 @@ class QuickCommand {
     return QuickCommand(
       label: json['label'] as String? ?? json['description'] as String? ?? json['title'] as String? ?? '',
       message: json['message'] as String? ?? json['command'] as String? ?? '',
+      rawLabel: json['rawLabel'] as String?,
       type: json['type'] as String?,
       isCustom: json['isCustom'] as bool? ?? false,
       isSlider: json['isSlider'] as bool? ??
