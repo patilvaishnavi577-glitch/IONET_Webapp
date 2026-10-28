@@ -865,10 +865,30 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                         _buildDetailRow(
                           icon: Icons.security,
                           title: 'Access Level',
-                          value: isOwner ? 'OWNED' : 'SHARED',
+                          value: isOwner ? 'Owned' : 'Shared',
                           iconColor: accentGreen,
                           textColor: textPri,
                         ),
+                        if (isOwner) ...[
+                          const Divider(height: 24),
+                          InkWell(
+                            onTap: _handleDeleteDevice,
+                            borderRadius: BorderRadius.circular(8),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 24),
+                                  const SizedBox(width: 16),
+                                  const Text(
+                                    'Delete Device',
+                                    style: TextStyle(color: Colors.redAccent, fontSize: 15, fontWeight: FontWeight.w600),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                         if (!isOwner) ...[
                           const Divider(height: 24),
                           _buildDetailRow(
@@ -959,26 +979,8 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                         },
                       ),
                     ),
-                  const SizedBox(height: 24),
-                  
-                  if (isOwner) ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: _handleDeleteDevice,
-                        icon: const Icon(Icons.delete_forever),
-                        label: const Text('Delete Device', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                  ] else ...[
+                  if (!isOwner) ...[
+                    const SizedBox(height: 24),
                     Container(
                       width: double.infinity,
                       decoration: BoxDecoration(
@@ -1002,7 +1004,7 @@ class _DeviceProfileViewState extends State<DeviceProfileView> {
                           )
                         ],
                       ),
-                    )
+                    ),
                   ],
                 ],
               ),
